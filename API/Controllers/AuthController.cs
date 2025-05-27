@@ -63,7 +63,7 @@ namespace API.Controllers
         }
 
         [HttpPost("register/user")]
-        public async Task<ActionResult> RegisterUser([FromBody] RegisterUserRequest request)
+        public async Task<ActionResult> RegisterUser([FromForm] RegisterUserRequest request)
         {
             var validationResult = await _registerUserValidator.ValidateAsync(request);
 
@@ -74,6 +74,23 @@ namespace API.Controllers
                     .ToList();
 
                 return BadRequest(new { Errors = errors });
+            }
+
+            string? profilePictureUrl = null;
+            if (request.ProfilePicture != null)
+            {
+                var fileName = Guid.NewGuid() + Path.GetExtension(request.ProfilePicture.FileName);
+
+                // 🔍 Wrap Cloudflare upload in try-catch
+                try
+                {
+                    profilePictureUrl = await _bucketService.UploadAsync(request.ProfilePicture);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Upload failed: {ex.Message}");
+                    return StatusCode(500, "Image upload failed.");
+                }
             }
 
             var existingUser = await _userManager.FindByEmailAsync(request.Email);
@@ -87,6 +104,7 @@ namespace API.Controllers
                 UserName = request.Email,
                 Email = request.Email,
                 RefreshToken = Guid.NewGuid().ToString("N").ToLower(),
+                ProfilePicture = profilePictureUrl,
             };
             var result = await _userManager.CreateAsync(user, request.Password);
 

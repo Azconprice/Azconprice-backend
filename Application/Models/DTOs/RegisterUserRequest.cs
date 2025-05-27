@@ -1,4 +1,6 @@
-﻿namespace Application.Models.DTOs
+﻿using Microsoft.AspNetCore.Http;
+
+namespace Application.Models.DTOs
 {
     public class RegisterUserRequest
     {
@@ -8,5 +10,6 @@
         public string Password { get; set; }
         public string? ConfirmPassword { get; set; }
         public string? PhoneNumber { get; set; }
+        public IFormFile ProfilePicture { get; set; }
     }
 }
