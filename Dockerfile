@@ -2,7 +2,13 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY . .       # Copy entire solution
+COPY API ./API
+COPY Application ./Application
+COPY Domain ./Domain
+COPY Infrastructure ./Infrastructure
+COPY Persistence ./Persistence
+COPY Azconprice-backend.sln .
+
 WORKDIR /src/API
 
 RUN dotnet restore
