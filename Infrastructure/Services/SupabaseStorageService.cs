@@ -51,4 +51,27 @@ public class SupabaseStorageService : IBucketService
         var url = await bucket.CreateSignedUrl(path, expiresInSeconds);
         return url;
     }
+
+    public async Task<string> UploadAsync(IFormFile file, string fileName)
+    {
+        await _supabase.InitializeAsync();
+
+        var path = $"profile/{fileName}";
+        var bucket = _supabase.Storage.From(_bucket);
+
+        await using var stream = file.OpenReadStream();
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream);
+        var fileBytes = memoryStream.ToArray();
+
+        // The third parameter 'upsert' set to true will override the file if it exists
+        await bucket.Upload(fileBytes, path, new FileOptions
+        {
+            ContentType = file.ContentType,
+            CacheControl = "3600",
+            Upsert = true
+        });
+
+        return path;
+    }
 }

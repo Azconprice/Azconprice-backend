@@ -147,7 +147,7 @@ namespace API.Extentions
 
         public static IServiceCollection AddContext(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<AppDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("Default")));
+            services.AddDbContext<AppDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("Default")).UseLazyLoadingProxies());
             return services;
         }
 
@@ -168,6 +168,7 @@ namespace API.Extentions
             services.AddScoped<IClientService, ClientService>();
             services.AddScoped<IProfessionService, ProfessionService>();
             services.AddScoped<ISpecializationService, SpecializationService>();
+            services.AddAutoMapper(typeof(MappingProfile));
             services.AddScoped<IMailService, MailService>();
             var smtpConfig = new SMTPConfig();
             configuration.GetSection("SMTP").Bind(smtpConfig);

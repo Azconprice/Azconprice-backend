@@ -24,6 +24,12 @@ namespace Persistence.Contexts
                 .HasOne(s => s.Profession)
                 .WithMany(p => p.Specializations)
                 .HasForeignKey(s => s.ProfessionId);
+
+            modelBuilder.Entity<WorkerProfile>()
+                .HasOne(wp => wp.User)
+                .WithOne()
+                .HasForeignKey<WorkerProfile>(wp => wp.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         DbSet<Profession> Professions { get; set; }

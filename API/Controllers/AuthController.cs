@@ -26,7 +26,8 @@ namespace API.Controllers
         IValidator<RegisterCompanyRequest> registerCompanyValidator,
         IWorkerProfileRepository workerProfileRepository,
         ICompanyProfileRepository companyProfileRepository,
-        IBucketService bucketService
+        IBucketService bucketService,
+        IWorkerService workerService
     ) : ControllerBase
     {
         private readonly UserManager<User> _userManager = userManager;
@@ -40,6 +41,7 @@ namespace API.Controllers
         private readonly IWorkerProfileRepository _workerProfileRepository = workerProfileRepository;
         private readonly ICompanyProfileRepository _companyProfileRepository = companyProfileRepository;
         private readonly IBucketService _bucketService = bucketService;
+        private readonly IWorkerService _workerService = workerService;
 
         private async Task<AuthTokenDTO> GenerateToken(User user)
         {
@@ -115,6 +117,13 @@ namespace API.Controllers
                     return BadRequest(new { Errors = errors });
                 }
 
+                // Specialization validation
+                if (request.Specizalizations != null && request.Specizalizations.Any())
+                {
+                    if (!await _workerService.AreSpecializationsValid(request.Specizalizations))
+                        return BadRequest(new { Error = "One or more specialization IDs are invalid." });
+                }
+
                 string? profilePictureUrl = null;
                 if (request.ProfilePicture != null)
                 {
@@ -123,7 +132,7 @@ namespace API.Controllers
                     // 🔍 Wrap Cloudflare upload in try-catch
                     try
                     {
-                        profilePictureUrl = await bucketService.UploadAsync(request.ProfilePicture);
+                        profilePictureUrl = await _bucketService.UploadAsync(request.ProfilePicture);
                     }
                     catch (Exception ex)
                     {
@@ -143,6 +152,8 @@ namespace API.Controllers
                     UserName = request.Email,
                     Email = request.Email,
                     RefreshToken = Guid.NewGuid().ToString("N").ToLower(),
+                    ProfilePicture = profilePictureUrl,
+                    PhoneNumber = request.PhoneNumber
                 };
 
                 var result = await _userManager.CreateAsync(user, request.Password);
@@ -157,7 +168,6 @@ namespace API.Controllers
                     Address = request.Address,
                     Experience = request.Experience,
                     Price = request.Price,
-                    ProfilePicture = profilePictureUrl
                 };
 
                 await _workerProfileRepository.AddAsync(workerProfile);
@@ -201,7 +211,7 @@ namespace API.Controllers
                 // 🔍 Wrap Cloudflare upload in try-catch
                 try
                 {
-                    logo = await bucketService.UploadAsync(request.Logo);
+                    logo = await _bucketService.UploadAsync(request.Logo);
                 }
                 catch (Exception ex)
                 {
@@ -217,10 +227,11 @@ namespace API.Controllers
             var user = new User
             {
                 FirstName = request.CompanyName,
-                LastName = request.CompanyName, 
+                LastName = request.CompanyName,
                 UserName = request.Email,
                 Email = request.Email,
                 RefreshToken = Guid.NewGuid().ToString("N").ToLower(),
+                PhoneNumber = request.PhoneNumber
             };
             var result = await _userManager.CreateAsync(user, request.Password);
 

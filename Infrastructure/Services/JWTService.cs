@@ -33,7 +33,7 @@ namespace Infrastructure.Services
             var token = new JwtSecurityToken(
                 issuer: _config.Issuer,
                 audience: _config.Audience,
-                expires: DateTime.UtcNow.AddMinutes(_config.ExpireMunites),
+                expires: DateTime.UtcNow.AddHours(_config.ExpireMunites),
                 signingCredentials: signingCredentials,
                 claims: claims
                 );

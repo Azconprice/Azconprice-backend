@@ -4,6 +4,6 @@
     {
         public string Name { get; set; }
         public string Description { get; set; }
-        public ICollection<Specialization> Specializations { get; set; }
+        public virtual ICollection<Specialization> Specializations { get; set; }
     }
 }
