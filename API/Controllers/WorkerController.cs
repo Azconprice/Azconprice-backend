@@ -8,17 +8,18 @@ namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class WorkerController : ControllerBase
+    public class WorkerController(IWorkerService service) : ControllerBase
     {
-        private readonly IWorkerService _service;
-
-        public WorkerController(IWorkerService service)
-        {
-            _service = service;
-        }
+        private readonly IWorkerService _service = service;
 
         [HttpGet("profile")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker")]
-        public async Task<ActionResult<ProfileDTO>> GetProfile(string email) => Ok(await _service.GetWorkerProfile(email));
+        public async Task<ActionResult<WorkerProfileDTO>> GetProfile(string email) {
+            var result = await _service.GetWorkerProfile(email);
+            if(result is not null)
+                return Ok(result);
+
+            return NotFound("Worker profile not found.");
+        }
     }
 }

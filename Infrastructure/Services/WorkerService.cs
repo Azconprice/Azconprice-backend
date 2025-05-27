@@ -6,25 +6,41 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Infrastructure.Services
 {
-    public class WorkerService(UserManager<User> userManager, IMailService mailService, IProfessionRepository professionRepository) : IWorkerService
+    public class WorkerService(UserManager<User> userManager, IWorkerProfileRepository workerProfileRepository, IProfessionRepository professionRepository) : IWorkerService
     {
         private readonly UserManager<User> _userManager = userManager;
+        private readonly IWorkerProfileRepository _workerProfileRepository = workerProfileRepository;
         private readonly IProfessionRepository _professionRepository = professionRepository;
 
-        public async Task<ProfileDTO?> GetWorkerProfile(string email)
+        public async Task<bool> DeleteWorkerProfile(string userId)
+        {
+            // Get the worker profile
+            var workerProfile = await _workerProfileRepository.GetByUserIdAsync(userId);
+            if (workerProfile == null)
+                return false;
+
+            // Get the related user
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return false;
+
+            // Remove the worker profile
+            _workerProfileRepository.Remove(workerProfile);
+            await _workerProfileRepository.SaveChangesAsync();
+
+            // Remove the user
+            var result = await _userManager.DeleteAsync(user);
+            return result.Succeeded;
+        }
+
+        public async Task<WorkerProfile?> GetWorkerProfile(string id)
         {
             try
             {
-                var worker = await _userManager.FindByEmailAsync(email);
-                if (worker is not null)
+                var workerProfile = await _workerProfileRepository.GetByUserIdAsync(id);
+                if (workerProfile is not null)
                 {
-                    var dto = new ProfileDTO
-                    {
-                        FirstName = worker.FirstName,
-                        LastName = worker.LastName,
-                        Email = worker.Email,
-                    };
-                    return dto;
+                    return workerProfile;
                 }
                 return null;
             }
@@ -34,5 +50,9 @@ namespace Infrastructure.Services
             }
         }
 
+        public Task<bool> UpdateWorkerProfile(WorkerUpdateProfileDTO model, string id)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

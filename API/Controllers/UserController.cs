@@ -1,7 +1,4 @@
-﻿using Application.Models.DTOs;
-using Application.Models.DTOs.Category;
-using Application.Services;
-using Microsoft.AspNetCore.Authorization;
+﻿using Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers

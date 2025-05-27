@@ -11,6 +11,7 @@ namespace Application.Repositories
     public interface IRepository<T> where T : BaseEntity
     {
         IEnumerable<T?> GetAll(bool tracking = true);
+        Task<List<T>> GetAllAsync(bool tracking = true);
         IEnumerable<T?> GetWhere(Expression<Func<T, bool>> expression);
 
         Task<T?> GetAsync(string id);

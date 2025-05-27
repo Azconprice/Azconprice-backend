@@ -1,4 +1,4 @@
-﻿namespace Application.Models.DTOs.Category
+﻿namespace Application.Models.DTOs.Profession
 {
     public class ProfessionShowDTO
     {

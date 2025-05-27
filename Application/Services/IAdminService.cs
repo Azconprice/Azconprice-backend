@@ -1,5 +1,5 @@
 ﻿using Application.Models.DTOs;
-using Application.Models.DTOs.Category;
+using Application.Models.DTOs.Profession;
 
 namespace Application.Services
 {

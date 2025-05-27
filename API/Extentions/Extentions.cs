@@ -1,7 +1,11 @@
-﻿using Application.Models;
+﻿using Amazon.Runtime;
+using Amazon.S3;
+using Application.Models;
 using Application.Repositories;
 using Application.Services;
+using Application.Validators.Worker;
 using Domain.Entities;
+using FluentValidation;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -10,6 +14,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Persistence.Contexts;
 using Persistence.Repositories;
+using Supabase;
 using System.Text;
 
 namespace API.Extentions
@@ -57,20 +62,22 @@ namespace API.Extentions
             return services;
         }
 
-        public static async void RegisterFirstAdmin(this WebApplication app)
+        public static async void SeedRolesAsync(this WebApplication app)
         {
             var container = app.Services.CreateScope();
             var userManager = container.ServiceProvider.GetRequiredService<UserManager<User>>();
             var roleManager = container.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             if (!await roleManager.RoleExistsAsync("Admin"))
             {
-                var result = await roleManager.CreateAsync(new IdentityRole("Admin"));
+                _ = await roleManager.CreateAsync(new IdentityRole("Admin"));
             }
 
             if (!await roleManager.RoleExistsAsync("Worker"))
                 await roleManager.CreateAsync(new IdentityRole("Worker"));
             if (!await roleManager.RoleExistsAsync("User"))
                 await roleManager.CreateAsync(new IdentityRole("User"));
+            if (!await roleManager.RoleExistsAsync("Company"))
+                await roleManager.CreateAsync(new IdentityRole("Company"));
 
             var user = await userManager.FindByEmailAsync("admin@admin.com");
             if (user is null)
@@ -101,7 +108,7 @@ namespace API.Extentions
                 op.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(2);
                 op.Lockout.MaxFailedAccessAttempts = 5;
             }).AddEntityFrameworkStores<AppDbContext>()
-            .AddDefaultTokenProviders();    
+            .AddDefaultTokenProviders();
 
             services.AddScoped<IJWTService, JWTService>();
 
@@ -147,6 +154,8 @@ namespace API.Extentions
         {
             services.AddScoped<IProfessionRepository, ProfessionRepository>();
             services.AddScoped<ISpecializationRepository, SpecializationRepository>();
+            services.AddScoped<IWorkerProfileRepository, WorkerProfileRepository>();
+            services.AddScoped<ICompanyProfileRepository, CompanyProfileRepository>();
 
             return services;
         }
@@ -156,10 +165,39 @@ namespace API.Extentions
             services.AddScoped<IAdminService, AdminService>();
             services.AddScoped<IWorkerService, WorkerService>();
             services.AddScoped<IClientService, ClientService>();
+            services.AddScoped<IProfessionService, ProfessionService>();
+            services.AddScoped<ISpecializationService, SpecializationService>();
             services.AddScoped<IMailService, MailService>();
             var smtpConfig = new SMTPConfig();
             configuration.GetSection("SMTP").Bind(smtpConfig);
             services.AddSingleton(smtpConfig);
+            return services;
+        }
+
+
+
+        public static IServiceCollection AddSupabaseStorage(this IServiceCollection services, IConfiguration config)
+        {
+            services.Configure<SupabaseSettings>(config.GetSection("Supabase"));
+
+            var supaCfg = config.GetSection("Supabase").Get<SupabaseSettings>() ?? throw new InvalidOperationException("Supabase config missing!");
+
+            services.AddSingleton<Client>(_ =>
+            {
+                var client = new Client(supaCfg.Url, supaCfg.ApiKey, new SupabaseOptions { AutoConnectRealtime = false });
+
+                client.InitializeAsync().GetAwaiter().GetResult();
+                return client;
+            });
+
+            services.AddScoped<IBucketService, SupabaseStorageService>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddValidators(this IServiceCollection services)
+        {
+            services.AddValidatorsFromAssemblyContaining<RegisterWorkerRequestValidator>();
             return services;
         }
     }

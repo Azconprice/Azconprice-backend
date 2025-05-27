@@ -1,5 +1,5 @@
 ﻿using Application.Models.DTOs;
-using Application.Models.DTOs.Category;
+using Application.Models.DTOs.Profession;
 using Application.Repositories;
 using Application.Services;
 using Domain.Entities;
@@ -57,15 +57,15 @@ namespace Infrastructure.Services
                 }
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return false;
+                throw new InvalidOperationException("An error occurred while adding a new admin.", ex);
             }
         }
 
         public IEnumerable<ProfessionShowDTO> GetAllProfessions() => _professionRepository.GetAll().Select(c => new ProfessionShowDTO { Id = c.Id.ToString(), Name = c.Name });
 
-        public async Task<bool> UpdateProfessionAsync(ProfessionUpdateDTO model,string id)
+        public async Task<bool> UpdateProfessionAsync(ProfessionUpdateDTO model, string id)
         {
             try
             {

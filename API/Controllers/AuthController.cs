@@ -1,33 +1,45 @@
 ﻿using Application.Models.DTOs;
+using Application.Models.DTOs.Company;
 using Application.Models.DTOs.Worker;
 using Application.Repositories;
 using Application.Services;
 using Domain.Entities;
+using FluentValidation;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController : ControllerBase
+    public class AuthController(
+        UserManager<User> userManager,
+        SignInManager<User> signInManager,
+        RoleManager<IdentityRole> roleManager,
+        IJWTService jwtService,
+        IMailService mailService,
+        IValidator<RegisterWorkerRequest> registerWorkerValidator,
+        IValidator<RegisterUserRequest> registerUserValidator,
+        IValidator<RegisterCompanyRequest> registerCompanyValidator,
+        IWorkerProfileRepository workerProfileRepository,
+        ICompanyProfileRepository companyProfileRepository,
+        IBucketService bucketService
+    ) : ControllerBase
     {
-        private readonly UserManager<User> _userManager;
-        private readonly SignInManager<User> _signInManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly IJWTService _jwtService;
-        private readonly IMailService _mailService;
-
-        public AuthController(UserManager<User> userManager, SignInManager<User> signInManager, RoleManager<IdentityRole> roleManager, IJWTService jwtService, IMailService mailService)
-        {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _roleManager = roleManager;
-            _jwtService = jwtService;
-            _mailService = mailService;
-        }
+        private readonly UserManager<User> _userManager = userManager;
+        private readonly SignInManager<User> _signInManager = signInManager;
+        private readonly RoleManager<IdentityRole> _roleManager = roleManager;
+        private readonly IJWTService _jwtService = jwtService;
+        private readonly IMailService _mailService = mailService;
+        private readonly IValidator<RegisterWorkerRequest> _registerWorkerValidator = registerWorkerValidator;
+        private readonly IValidator<RegisterUserRequest> _registerUserValidator = registerUserValidator;
+        private readonly IValidator<RegisterCompanyRequest> _registerCompanyValidator = registerCompanyValidator;
+        private readonly IWorkerProfileRepository _workerProfileRepository = workerProfileRepository;
+        private readonly ICompanyProfileRepository _companyProfileRepository = companyProfileRepository;
+        private readonly IBucketService _bucketService = bucketService;
 
         private async Task<AuthTokenDTO> GenerateToken(User user)
         {
@@ -49,8 +61,19 @@ namespace API.Controllers
         }
 
         [HttpPost("register/user")]
-        public async Task<ActionResult> RegisterUser(RegisterUserRequest request)
+        public async Task<ActionResult> RegisterUser([FromBody] RegisterUserRequest request)
         {
+            var validationResult = await _registerUserValidator.ValidateAsync(request);
+
+            if (!validationResult.IsValid)
+            {
+                var errors = validationResult.Errors
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+
+                return BadRequest(new { Errors = errors });
+            }
+
             var existingUser = await _userManager.FindByEmailAsync(request.Email);
             if (existingUser is not null)
                 return Conflict("User already exists");
@@ -79,16 +102,122 @@ namespace API.Controllers
         }
 
         [HttpPost("register/worker")]
-        public async Task<ActionResult> RegisterWorker(RegisterWorkerRequest request)
+        [RequestSizeLimit(50_000_000)] // 50 MB
+        public async Task<IActionResult> RegisterWorker([FromForm] RegisterWorkerRequest request)
         {
+            try
+            {
+                var validationResult = await _registerWorkerValidator.ValidateAsync(request);
+
+                if (!validationResult.IsValid)
+                {
+                    var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+                    return BadRequest(new { Errors = errors });
+                }
+
+                string? profilePictureUrl = null;
+                if (request.ProfilePicture != null)
+                {
+                    var fileName = Guid.NewGuid() + Path.GetExtension(request.ProfilePicture.FileName);
+
+                    // 🔍 Wrap Cloudflare upload in try-catch
+                    try
+                    {
+                        profilePictureUrl = await bucketService.UploadAsync(request.ProfilePicture);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ Upload failed: {ex.Message}");
+                        return StatusCode(500, "Image upload failed.");
+                    }
+                }
+
+                var existingUser = await _userManager.FindByEmailAsync(request.Email);
+                if (existingUser is not null)
+                    return Conflict("User already exists");
+
+                var user = new User
+                {
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    UserName = request.Email,
+                    Email = request.Email,
+                    RefreshToken = Guid.NewGuid().ToString("N").ToLower(),
+                };
+
+                var result = await _userManager.CreateAsync(user, request.Password);
+                if (!result.Succeeded)
+                    return BadRequest(result.Errors);
+
+                var workerProfile = new WorkerProfile
+                {
+                    UserId = user.Id,
+                    HaveTaxId = request.HaveTaxId,
+                    TaxId = request.TaxId,
+                    Address = request.Address,
+                    Experience = request.Experience,
+                    Price = request.Price,
+                    ProfilePicture = profilePictureUrl
+                };
+
+                await _workerProfileRepository.AddAsync(workerProfile);
+                await _workerProfileRepository.SaveChangesAsync();
+
+                var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                var url = Url.Action(nameof(ConfirmEmail), "Auth", new { email = user.Email, token = confirmToken }, Request.Scheme);
+                if (url is not null)
+                    _mailService.SendConfirmationMessage(user.Email, url);
+
+                await _userManager.AddToRoleAsync(user, "Worker");
+
+                return Ok();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"🔥 CRASH: {e}");
+                return StatusCode(500, "Unhandled server error.");
+            }
+        }
+
+        [HttpPost("register/company")]
+        public async Task<IActionResult> RegisterCompany([FromForm] RegisterCompanyRequest request)
+        {
+            var validationResult = await _registerCompanyValidator.ValidateAsync(request);
+
+            if (!validationResult.IsValid)
+            {
+                var errors = validationResult.Errors
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+
+                return BadRequest(new { Errors = errors });
+            }
+
+            string? logo = null;
+            if (request.Logo != null)
+            {
+                var fileName = Guid.NewGuid() + Path.GetExtension(request.Logo.FileName);
+
+                // 🔍 Wrap Cloudflare upload in try-catch
+                try
+                {
+                    logo = await bucketService.UploadAsync(request.Logo);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Upload failed: {ex.Message}");
+                    return StatusCode(500, "Image upload failed.");
+                }
+            }
+
             var existingUser = await _userManager.FindByEmailAsync(request.Email);
             if (existingUser is not null)
                 return Conflict("User already exists");
 
             var user = new User
             {
-                FirstName = request.FirstName,
-                LastName = request.LastName,
+                FirstName = request.CompanyName,
+                LastName = request.CompanyName, 
                 UserName = request.Email,
                 Email = request.Email,
                 RefreshToken = Guid.NewGuid().ToString("N").ToLower(),
@@ -98,12 +227,22 @@ namespace API.Controllers
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
 
+            var companyProfile = new CompanyProfile
+            {
+                UserId = user.Id,
+                TaxId = request.TaxId,
+                Address = request.Address,
+                CompanyLogo = logo,
+            };
+            await _companyProfileRepository.AddAsync(companyProfile);
+            await _companyProfileRepository.SaveChangesAsync();
+
             var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var url = Url.Action(nameof(ConfirmEmail), "Auth", new { email = user.Email, token = confirmToken }, Request.Scheme);
             if (url is not null)
                 _mailService.SendConfirmationMessage(user.Email, url);
 
-            await _userManager.AddToRoleAsync(user, "User");
+            await _userManager.AddToRoleAsync(user, "Company");
 
             return Ok();
         }

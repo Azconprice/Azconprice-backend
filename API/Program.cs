@@ -10,7 +10,15 @@ builder.Services.AddContext(builder.Configuration);
 builder.Services.AddRepositories();
 builder.Services.AddDomainServices(builder.Configuration);
 builder.Services.AddAuthenticationAndAuthorization(builder.Configuration);
+builder.Services.AddValidators();
+builder.Services.AddSupabaseStorage(builder.Configuration);
 builder.Host.UseSerilog((context, configuration) => configuration.ReadFrom.Configuration(context.Configuration));
+
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(80); // Allow external connections inside container
+});
+
 
 var app = builder.Build();
 
@@ -22,10 +30,20 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseCors("AllowAll");
+
+app.UseAuthentication();
+
 app.UseAuthorization();
 
 app.MapControllers();
 
-app.RegisterFirstAdmin();
+app.SeedRolesAsync();
+
+app.Use(async (context, next) =>
+{
+    Console.WriteLine($"Request: {context.Request.Method} {context.Request.Path}");
+    await next();
+});
 
 app.Run();

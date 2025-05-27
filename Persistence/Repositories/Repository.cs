@@ -31,9 +31,17 @@ namespace Persistence.Repositories
         public IEnumerable<T?> GetAll(bool tracking = true)
         {
             if (tracking)
-                return Table.ToList();
+                return [.. Table];
 
-            return Table.AsNoTracking().ToList();
+            return [.. Table.AsNoTracking()];
+        }
+
+        public async Task<List<T>> GetAllAsync(bool tracking = true)
+        {
+            if (tracking)
+                return await Table.ToListAsync();
+
+            return await Table.AsNoTracking().ToListAsync();
         }
 
         public async Task<T?> GetAsync(string id) => await Table.FirstOrDefaultAsync(e => e.Id == Guid.Parse(id));
