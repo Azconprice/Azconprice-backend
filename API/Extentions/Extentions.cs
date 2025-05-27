@@ -10,6 +10,7 @@ using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Persistence.Contexts;
@@ -178,15 +179,21 @@ namespace API.Extentions
 
         public static IServiceCollection AddSupabaseStorage(this IServiceCollection services, IConfiguration config)
         {
+            // Bind Supabase section to a settings class
             services.Configure<SupabaseSettings>(config.GetSection("Supabase"));
 
-            var supaCfg = config.GetSection("Supabase").Get<SupabaseSettings>() ?? throw new InvalidOperationException("Supabase config missing!");
-
-            services.AddSingleton<Client>(_ =>
+            // Inject Client using settings from DI container (not read inline here)
+            services.AddSingleton<Client>(sp =>
             {
-                var client = new Client(supaCfg.Url, supaCfg.ApiKey, new SupabaseOptions { AutoConnectRealtime = false });
+                var config = sp.GetRequiredService<IOptions<SupabaseSettings>>().Value;
+                var options = new Supabase.SupabaseOptions
+                {
+                    AutoConnectRealtime = false
+                };
 
-                client.InitializeAsync().GetAwaiter().GetResult();
+                var client = new Supabase.Client(config.Url, config.ApiKey, options);
+                client.InitializeAsync().Wait(); // OR await in async context
+
                 return client;
             });
 
@@ -194,6 +201,7 @@ namespace API.Extentions
 
             return services;
         }
+
 
         public static IServiceCollection AddValidators(this IServiceCollection services)
         {
