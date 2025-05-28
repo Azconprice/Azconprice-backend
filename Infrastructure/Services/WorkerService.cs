@@ -8,30 +8,20 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Infrastructure.Services
 {
-    public class WorkerService : IWorkerService
+    public class WorkerService(
+        IWorkerProfileRepository workerProfileRepository,
+        IMapper mapper,
+        IBucketService bucketService,
+        IMailService mailService,
+        ISpecializationRepository specializationsRepository,
+        UserManager<User> userManager) : IWorkerService
     {
-        private readonly IWorkerProfileRepository _workerProfileRepository;
-        private readonly IMapper _mapper;
-        private readonly IBucketService _bucketService;
-        private readonly IMailService _mailService;
-        private readonly ISpecializationRepository _specializationsRepository;
-        private readonly UserManager<User> _userManager;
-
-        public WorkerService(
-            IWorkerProfileRepository workerProfileRepository,
-            IMapper mapper,
-            IBucketService bucketService,
-            IMailService mailService,
-            ISpecializationRepository specializationsRepository,
-            UserManager<User> userManager)
-        {
-            _workerProfileRepository = workerProfileRepository;
-            _mapper = mapper;
-            _bucketService = bucketService;
-            _mailService = mailService;
-            _specializationsRepository = specializationsRepository;
-            _userManager = userManager;
-        }
+        private readonly IWorkerProfileRepository _workerProfileRepository = workerProfileRepository;
+        private readonly IMapper _mapper = mapper;
+        private readonly IBucketService _bucketService = bucketService;
+        private readonly IMailService _mailService = mailService;
+        private readonly ISpecializationRepository _specializationsRepository = specializationsRepository;
+        private readonly UserManager<User> _userManager = userManager;
 
         public async Task<bool> DeleteWorkerProfile(string userId)
         {
@@ -45,7 +35,7 @@ namespace Infrastructure.Services
             return true;
         }
 
-        public async Task<WorkerProfileDTO> GetWorkerProfile(string id)
+        public async Task<WorkerProfileDTO?> GetWorkerProfile(string id)
         {
             var workerProfile = await _workerProfileRepository.GetByUserIdAsync(id);
             if (workerProfile == null)
@@ -86,6 +76,9 @@ namespace Infrastructure.Services
 
             if (!string.IsNullOrEmpty(model.Email) && model.Email != user.Email)
             {
+                var existingUser = _userManager.FindByEmailAsync(model.Email);
+                if (existingUser is not null)
+                    throw new InvalidOperationException("Worker with this email already exists");
                 user.Email = model.Email;
                 user.UserName = model.Email;
                 emailChanged = true;

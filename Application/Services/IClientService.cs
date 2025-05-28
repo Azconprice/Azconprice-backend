@@ -1,13 +1,11 @@
-﻿using Application.Models.DTOs;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Application.Models.DTOs.User;
 
 namespace Application.Services
 {
     public interface IClientService
     {
+        Task<UserShowDTO?> GetUserByIdAsync(string id);
+        Task<bool> UpdateUserAsync(string id,UserUpdateDTO model);
+        Task<bool> DeleteUserAsync(string id);
     }
 }

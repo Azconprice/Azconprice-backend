@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http;
 
-namespace Application.Models.DTOs
+namespace Application.Models.DTOs.User
 {
-    public class RegisterUserRequest
+    public class UserUpdateDTO
     {
         public string FirstName { get; set; }
         public string LastName { get; set; }
@@ -10,6 +10,6 @@ namespace Application.Models.DTOs
         public string Password { get; set; }
         public string? ConfirmPassword { get; set; }
         public string? PhoneNumber { get; set; }
-        public IFormFile ProfilePicture { get; set; }
+        public IFormFile? ProfilePicture { get; set; }
     }
 }

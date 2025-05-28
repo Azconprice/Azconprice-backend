@@ -1,5 +1,6 @@
 ﻿using Application.Models.DTOs;
 using Application.Models.DTOs.Company;
+using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
 using Application.Repositories;
 using Application.Services;
@@ -105,6 +106,7 @@ namespace API.Controllers
                 Email = request.Email,
                 RefreshToken = Guid.NewGuid().ToString("N").ToLower(),
                 ProfilePicture = profilePictureUrl,
+                PhoneNumber = request.PhoneNumber
             };
             var result = await _userManager.CreateAsync(user, request.Password);
 
