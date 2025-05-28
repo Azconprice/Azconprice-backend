@@ -81,7 +81,7 @@ namespace API.Controllers
         }
 
         [HttpPatch("profile/{id}")]
-        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         public async Task<IActionResult> PatchProfile(string id, [FromForm] WorkerUpdateProfileDTO updateDto)
         {
             var validationResult = await _validator.ValidateAsync(updateDto);
@@ -114,7 +114,7 @@ namespace API.Controllers
         }
 
         [HttpDelete("profile/{id}")]
-        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         public async Task<IActionResult> DeleteProfile(string id)
         {
             var deleted = await _service.DeleteWorkerProfile(id);

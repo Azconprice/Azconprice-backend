@@ -14,10 +14,10 @@ builder.Services.AddValidators();
 builder.Services.AddSupabaseStorage(builder.Configuration);
 builder.Host.UseSerilog((context, configuration) => configuration.ReadFrom.Configuration(context.Configuration));
 
-//builder.WebHost.ConfigureKestrel(serverOptions =>
-//{
-//    serverOptions.ListenAnyIP(80);
-//});
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(80);
+});
 
 var app = builder.Build();
 

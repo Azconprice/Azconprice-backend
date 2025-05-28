@@ -264,6 +264,7 @@ namespace API.Controllers
                 TaxId = request.TaxId,
                 Address = request.Address,
                 CompanyLogo = logo,
+                IsConfirmed= false
             };
             await _companyProfileRepository.AddAsync(companyProfile);
             await _companyProfileRepository.SaveChangesAsync();

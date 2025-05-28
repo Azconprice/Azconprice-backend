@@ -7,5 +7,6 @@ namespace Domain.Entities
         public string TaxId { get; set; }
         public string Address { get; set; }
         public string? CompanyLogo { get; set; }
+        public bool IsConfirmed { get; set; }
     }
 }

@@ -7,32 +7,10 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Infrastructure.Services
 {
-    public class AdminService : IAdminService
+    public class AdminService(UserManager<User> userManager, ICompanyProfileRepository companyProfileRepository) : IAdminService
     {
-        private readonly IProfessionRepository _professionRepository;
-        private readonly UserManager<User> _userManager;
-
-        public AdminService(IProfessionRepository professionRepository, UserManager<User> userManager)
-        {
-            _professionRepository = professionRepository;
-            _userManager = userManager;
-        }
-
-        public async Task<bool> AddProfessionAsync(ProfessionDTO model)
-        {
-            try
-            {
-                var category = new Profession { Name = model.Name, Description = model.Description };
-                await _professionRepository.AddAsync(category);
-                await _professionRepository.SaveChangesAsync();
-
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
+        private readonly UserManager<User> _userManager = userManager;
+        private readonly ICompanyProfileRepository _companyProfileRepository = companyProfileRepository;
 
         public async Task<bool> AddNewAdmin(AddAdminDTO model)
         {
@@ -63,29 +41,16 @@ namespace Infrastructure.Services
             }
         }
 
-        public IEnumerable<ProfessionShowDTO> GetAllProfessions() => _professionRepository.GetAll().Select(c => new ProfessionShowDTO { Id = c.Id.ToString(), Name = c.Name });
-
-        public async Task<bool> UpdateProfessionAsync(ProfessionUpdateDTO model, string id)
+        public async Task<bool> ChangeCompanyStatus(string id)
         {
-            try
-            {
-                var profession = await _professionRepository.GetAsync(id);
-
-                if (profession == null)
-                    return false;
-
-                profession.Name = model.Name;
-                profession.Description = model.Description;
-
-                _professionRepository.Update(profession);
-                await _professionRepository.SaveChangesAsync();
-
-                return true;
-            }
-            catch (Exception)
-            {
+            var company = await _companyProfileRepository.GetAsync(id);
+            if (company is null)
                 return false;
-            }
+
+            company.IsConfirmed = !company.IsConfirmed;
+            _companyProfileRepository.Update(company);
+            await _companyProfileRepository.SaveChangesAsync();
+            return true;
         }
     }
 }
