@@ -6,15 +6,21 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class WorkerController(IWorkerService service, IValidator<WorkerUpdateProfileDTO> validator) : ControllerBase
+    public class WorkerController(
+        IWorkerService service,
+        IValidator<WorkerUpdateProfileDTO> validator,
+        IAppLogger appLogger // Inject logger
+    ) : ControllerBase
     {
         private readonly IWorkerService _service = service;
         private readonly IValidator<WorkerUpdateProfileDTO> _validator = validator;
+        private readonly IAppLogger _appLogger = appLogger;
 
         [HttpGet("profile")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker")]
@@ -69,10 +75,18 @@ namespace API.Controllers
                     updateDto,
                     (email, token) => Url.Action("ConfirmEmail", "Auth", new { email, token }, Request.Scheme) ?? string.Empty
                 );
-                if (!updated)
+                if (updated is null)
                     return NotFound("Worker profile not found.");
 
-                return Ok(new { Message = "Profile updated successfully." });
+                await _appLogger.LogAsync(
+                   action: "Worker Profile Update",
+                   relatedEntityId: updated.Id.ToString(),
+                   userId: updated.UserId,
+                   userName: $"{updated.FirstName} {updated.LastName}",
+                   details: $"Worker {updated.FirstName} {updated.LastName} updated profile with ID: {updated.Id}"
+               );
+
+                return Ok(updated);
             }
             catch (InvalidOperationException ex)
             {
@@ -102,8 +116,16 @@ namespace API.Controllers
                     updateDto,
                     (email, token) => Url.Action("ConfirmEmail", "Auth", new { email, token }, Request.Scheme) ?? string.Empty // Ensure non-null return
                 );
-                if (!updated)
+                if (updated is null)
                     return NotFound("Worker profile not found.");
+
+                await _appLogger.LogAsync(
+                   action: "Worker Profile Update",
+                   relatedEntityId: User.FindFirst("userId")?.Value,
+                   userId: User.FindFirst("userId")?.Value,
+                   userName: $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value}",
+                   details: $"Admin {User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} updated profile with ID: {updated.Id}"
+               );
 
                 return Ok(new { Message = "Profile updated successfully." });
             }
@@ -121,6 +143,14 @@ namespace API.Controllers
             if (!deleted)
                 return NotFound("Worker profile not found.");
 
+            await _appLogger.LogAsync(
+                   action: "Worker Profile Delete",
+                   relatedEntityId: User.FindFirst("userId")?.Value,
+                   userId: User.FindFirst("userId")?.Value,
+                   userName: $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value}",
+                   details: $"Admin {User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} deleted profile with ID: {User.FindFirst("userId")?.Value}"
+            );
+
             return Ok(new { Message = "Profile deleted successfully." });
         }
 
@@ -135,6 +165,14 @@ namespace API.Controllers
             var deleted = await _service.DeleteWorkerProfile(userId);
             if (!deleted)
                 return NotFound("Worker profile not found.");
+
+            await _appLogger.LogAsync(
+                   action: "Worker Profile Delete",
+                   relatedEntityId: User.FindFirst("userId")?.Value,
+                   userId: User.FindFirst("userId")?.Value,
+                   userName: $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value}",
+                   details: $"Worker {User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} deleted profile with ID: {User.FindFirst("userId")?.Value}"
+            );
 
             return Ok(new { Message = "Profile deleted successfully." });
         }

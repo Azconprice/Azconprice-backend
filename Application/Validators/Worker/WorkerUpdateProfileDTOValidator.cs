@@ -5,8 +5,7 @@ namespace Application.Validators.Worker
 {
     public class WorkerUpdateProfileDTOValidator : AbstractValidator<WorkerUpdateProfileDTO>
     {
-        private const string AzerbaijanPhoneRegex =
-            @"^\+994([ -]?)(10|20|21|22|23|24|25|26|27|28|29|50|51|55|60|70|77|99)([ -]?\d{3})([ -]?\d{2})([ -]?\d{2})$";
+        private const string AzerbaijanPhoneRegex = @"^\+994[-\s]?(10|50|51|55|60|70|77|99)[-\s]?\d{3}[-\s]?\d{2}[-\s]?\d{2}$";
 
         public WorkerUpdateProfileDTOValidator()
         {

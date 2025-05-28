@@ -8,9 +8,10 @@ namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class SpecializationController(ISpecializationService specializationService) : ControllerBase
+    public class SpecializationController(ISpecializationService specializationService, IAppLogger appLogger) : ControllerBase
     {
         private readonly ISpecializationService _specializationService = specializationService;
+        private readonly IAppLogger _appLogger = appLogger;
 
         [HttpPost]
         [Authorize(Roles = "Admin")]
@@ -19,6 +20,15 @@ namespace API.Controllers
             try
             {
                 await _specializationService.AddSpecializationAsync(specializationDto);
+
+                await _appLogger.LogAsync(
+                    action: "Specialization Added",
+                    relatedEntityId: null, 
+                    userId: $"{User?.FindFirst("userId")}",
+                    userName: $"{User?.FindFirst("firstname")} {User?.FindFirst("lastname")}",
+                    details: $"Specialization '{specializationDto.Name}' added to ProfessionId '{specializationDto.ProfessionId}'."
+                );
+
                 return Ok(new { Message = "Specialization added successfully." });
             }
             catch (InvalidOperationException ex)
@@ -34,6 +44,15 @@ namespace API.Controllers
             try
             {
                 await _specializationService.UpdateSpecializationAsync(id, updateDto);
+
+                await _appLogger.LogAsync(
+                    action: "Specialization Updated",
+                    relatedEntityId: id,
+                    userId: $"{User?.FindFirst("userId")}",
+                    userName: $"{User?.FindFirst("firstname")} {User?.FindFirst("lastname")}",
+                    details: $"Specialization '{updateDto.Name}' updated for ProfessionId '{updateDto.ProfessionId}'."
+                );
+
                 return Ok(new { Message = "Specialization updated successfully." });
             }
             catch (InvalidOperationException ex)
@@ -49,6 +68,15 @@ namespace API.Controllers
             try
             {
                 await _specializationService.DeleteSpecializationAsync(id);
+
+                await _appLogger.LogAsync(
+                    action: "Specialization Deleted",
+                    relatedEntityId: id,
+                    userId: $"{User?.FindFirst("userId")}",
+                    userName: $"{User?.FindFirst("firstname")} {User?.FindFirst("lastname")}",
+                    details: $"Specialization with ID '{id}' deleted by {User?.FindFirst("firstname")} {User?.FindFirst("lastname")}."
+                );
+
                 return Ok(new { Message = "Specialization deleted successfully." });
             }
             catch (InvalidOperationException ex)

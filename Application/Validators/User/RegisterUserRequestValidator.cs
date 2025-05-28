@@ -5,8 +5,9 @@ namespace Application.Validators.User
 {
     public class RegisterUserRequestValidator : AbstractValidator<RegisterUserRequest>
     {
-        private const string AzerbaijanPhoneRegex =
-         @"^\+994([ -]?)(10|20|21|22|23|24|25|26|27|28|29|50|51|55|60|70|77|99)([ -]?\d{3})([ -]?\d{2})([ -]?\d{2})$";
+        // Accepts +994XXXXXXXXX, +994 XX XXX XX XX, +994-XX-XXX-XX-XX, etc.
+        private const string AzerbaijanPhoneRegex = @"^\+994[-\s]?(10|50|51|55|60|70|77|99)[-\s]?\d{3}[-\s]?\d{2}[-\s]?\d{2}$";
+
         public RegisterUserRequestValidator()
         {
             RuleFor(x => x.FirstName)
@@ -34,11 +35,6 @@ namespace Application.Validators.User
 
             RuleFor(x => x.ConfirmPassword)
                 .Equal(x => x.Password).WithMessage("Passwords do not match.");
-
-            RuleFor(x => x.PhoneNumber)
-                .NotEmpty().WithMessage("Phone number is required.")
-                .Matches(@"^\+994([ -]?)(10)([ -]?\d{3})([ -]?\d{2})([ -]?\d{2})$")
-                .WithMessage("Phone number must be in one of the following formats: +994102122908, +994 10 212 29 08, or +994-10-212-29-08.");
         }
     }
 }

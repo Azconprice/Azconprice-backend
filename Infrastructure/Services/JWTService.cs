@@ -17,12 +17,14 @@ namespace Infrastructure.Services
             _config = config;
         }
 
-        public string GenerateSecurityToken(string id, string email, IEnumerable<string> roles, IEnumerable<Claim> userClaims)
+        public string GenerateSecurityToken(string id, string email,string firstName,string lastName, IEnumerable<string> roles, IEnumerable<Claim> userClaims)
         {
             var claims = new[]
             {
                 new Claim(ClaimsIdentity.DefaultNameClaimType, email),
                 new Claim("userId", id),
+                new Claim("firstName", firstName),
+                new Claim("lastName", lastName),
                 new Claim(ClaimsIdentity.DefaultRoleClaimType, string.Join(",", roles))
             }.Concat(userClaims);
 

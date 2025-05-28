@@ -37,5 +37,6 @@ namespace Persistence.Contexts
         DbSet<UserSpecialization> UserSpecializations { get; set; }
         public DbSet<WorkerProfile> WorkerProfiles { get; set; }
         public DbSet<CompanyProfile> CompanyProfiles { get; set; }
+        public DbSet<AppLog> AppLogs { get; set; }
     }
 }

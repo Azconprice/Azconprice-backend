@@ -8,9 +8,10 @@ namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProfessionController(IProfessionService professionService) : ControllerBase
+    public class ProfessionController(IProfessionService professionService, IAppLogger appLogger) : ControllerBase
     {
         private readonly IProfessionService _professionService = professionService;
+        private readonly IAppLogger _appLogger = appLogger;
 
         [HttpPost]
         [Authorize(Roles = "Admin")]
@@ -19,6 +20,15 @@ namespace API.Controllers
             try
             {
                 await _professionService.AddProfessionAsync(professionDto);
+
+                await _appLogger.LogAsync(
+                    action: "Profession Added",
+                    relatedEntityId: null,
+                    userId: $"{User?.FindFirst("userId")}",
+                    userName: $"{User?.FindFirst("firstname")} {User?.FindFirst("lastname")}",
+                    details: $"Profession '{professionDto.Name}' added."
+                );
+
                 return Ok(new { Message = "Profession added successfully." });
             }
             catch (InvalidOperationException ex)
@@ -34,6 +44,15 @@ namespace API.Controllers
             try
             {
                 await _professionService.UpdateProfessionAsync(id, updateDto);
+
+                await _appLogger.LogAsync(
+                    action: "Profession Updated",
+                    relatedEntityId: id,
+                   userId: $"{User?.FindFirst("userId")}",
+                    userName: $"{User?.FindFirst("firstname")} {User?.FindFirst("lastname")}",
+                    details: $"Profession '{updateDto.Name}' updated."
+                );
+
                 return Ok(new { Message = "Profession updated successfully." });
             }
             catch (InvalidOperationException ex)
@@ -49,6 +68,14 @@ namespace API.Controllers
             try
             {
                 await _professionService.DeleteProfessionAsync(id);
+
+                await _appLogger.LogAsync(
+                    action: "Profession Deleted",
+                    relatedEntityId: id, userId: $"{User?.FindFirst("userId")}",
+                    userName: $"{User?.FindFirst("firstname")} {User?.FindFirst("lastname")}",
+                    details: $"Profession with ID '{id}' deleted."
+                );
+
                 return Ok(new { Message = "Profession deleted successfully." });
             }
             catch (InvalidOperationException ex)

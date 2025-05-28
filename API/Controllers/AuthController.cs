@@ -28,7 +28,8 @@ namespace API.Controllers
         IWorkerProfileRepository workerProfileRepository,
         ICompanyProfileRepository companyProfileRepository,
         IBucketService bucketService,
-        IWorkerService workerService
+        IWorkerService workerService,
+        IAppLogger appLogger
     ) : ControllerBase
     {
         private readonly UserManager<User> _userManager = userManager;
@@ -43,13 +44,14 @@ namespace API.Controllers
         private readonly ICompanyProfileRepository _companyProfileRepository = companyProfileRepository;
         private readonly IBucketService _bucketService = bucketService;
         private readonly IWorkerService _workerService = workerService;
+        private readonly IAppLogger _appLogger = appLogger;
 
         private async Task<AuthTokenDTO> GenerateToken(User user)
         {
             var roles = await _userManager.GetRolesAsync(user);
             var claims = await _userManager.GetClaimsAsync(user);
 
-            var accessToken = _jwtService.GenerateSecurityToken(user.Id, user.Email, roles, claims);
+            var accessToken = _jwtService.GenerateSecurityToken(user.Id, user.Email, user.FirstName, user.LastName, roles, claims);
 
             var refreshToken = Guid.NewGuid().ToString("N").ToLower();
 
@@ -120,7 +122,47 @@ namespace API.Controllers
 
             await _userManager.AddToRoleAsync(user, "User");
 
+            await _appLogger.LogAsync(
+            action: "User Registered",
+            relatedEntityId: user.Id,
+            userId: user.Id,
+            userName: $"{user.FirstName} {user.LastName}",
+            details: $"User registered with email {user.Email}"
+            );
+
             return Ok();
+        }
+
+        [HttpPost("resend-confirmation")]
+        public async Task<IActionResult> ResendConfirmation([FromBody] string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return BadRequest("Email is required.");
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user is null)
+                return BadRequest("User with this email does not exist.");
+
+            if (await _userManager.IsEmailConfirmedAsync(user))
+                return BadRequest("Email is already confirmed.");
+
+            var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var url = Url.Action(nameof(ConfirmEmail), "Auth", new { email = user.Email, token = confirmToken }, Request.Scheme);
+
+            if (url is not null)
+            {
+                _mailService.SendConfirmationMessage(user.Email, url);
+
+                await _appLogger.LogAsync(
+                    action: "Resent Email Confirmation",
+                    relatedEntityId: user.Id,
+                    userId: user.Id,
+                    userName: $"{user.FirstName} {user.LastName}",
+                    details: $"Resent confirmation email to {user.Email}"
+                );
+            }
+
+            return Ok("Confirmation email sent.");
         }
 
         [HttpPost("register/worker")]
@@ -200,6 +242,14 @@ namespace API.Controllers
 
                 await _userManager.AddToRoleAsync(user, "Worker");
 
+                await _appLogger.LogAsync(
+                action: "Worker Registered",
+                relatedEntityId: user.Id,
+                userId: user.Id,
+                userName: $"{user.FirstName} {user.LastName}",
+                details: $"User registered with email {user.Email}"
+                );
+
                 return Ok();
             }
             catch (Exception e)
@@ -264,7 +314,7 @@ namespace API.Controllers
                 TaxId = request.TaxId,
                 Address = request.Address,
                 CompanyLogo = logo,
-                IsConfirmed= false
+                IsConfirmed = false
             };
             await _companyProfileRepository.AddAsync(companyProfile);
             await _companyProfileRepository.SaveChangesAsync();
@@ -275,6 +325,14 @@ namespace API.Controllers
                 _mailService.SendConfirmationMessage(user.Email, url);
 
             await _userManager.AddToRoleAsync(user, "Company");
+
+            await _appLogger.LogAsync(
+                action: "Company Registered",
+                relatedEntityId: user.Id,
+                userId: user.Id,
+                userName: $"{user.FirstName} {user.LastName}",
+                details: $"User registered with email {user.Email}"
+                );
 
             return Ok();
         }
@@ -293,6 +351,14 @@ namespace API.Controllers
 
                 if (!canSignIn.Succeeded)
                     return BadRequest();
+
+                await _appLogger.LogAsync(
+                    action: "Logged In",
+                    relatedEntityId: user.Id,
+                    userId: user.Id,
+                    userName: $"{user.FirstName} {user.LastName}",
+                    details: $"Logged in with email {user.Email}"
+                );
 
                 return await GenerateToken(user);
             }
@@ -320,6 +386,14 @@ namespace API.Controllers
                 var result = await _userManager.ConfirmEmailAsync(user, token);
                 if (result.Succeeded)
                 {
+
+                    await _appLogger.LogAsync(
+                    action: "Email Successfully Confirmed",
+                    relatedEntityId: user.Id,
+                    userId: user.Id,
+                    userName: $"{user.FirstName} {user.LastName}",
+                    details: $"{user.Email} email of {user.FirstName} {user.LastName} successfully confirmed"
+                    );
                     return Content(
                         "<html><body style='font-family:sans-serif;text-align:center;padding-top:50px;'>" +
                         "<h2>Email confirmed successfully!</h2>" +
@@ -330,6 +404,13 @@ namespace API.Controllers
                 }
                 else
                 {
+                    await _appLogger.LogAsync(
+                   action: "Email Confirmation failed due to token exporation",
+                   relatedEntityId: user.Id,
+                   userId: user.Id,
+                   userName: $"{user.FirstName} {user.LastName}",
+                   details: $"{user.Email} email of {user.FirstName} {user.LastName} was not confirmed"
+                   );
                     return Content(
                         "<html><body style='font-family:sans-serif;text-align:center;padding-top:50px;'>" +
                         "<h2>Invalid or expired confirmation link.</h2>" +

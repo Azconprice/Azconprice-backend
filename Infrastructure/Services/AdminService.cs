@@ -1,4 +1,6 @@
 ﻿using Application.Models.DTOs;
+using Application.Models.DTOs.Log;
+using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.Profession;
 using Application.Repositories;
 using Application.Services;
@@ -7,10 +9,11 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Infrastructure.Services
 {
-    public class AdminService(UserManager<User> userManager, ICompanyProfileRepository companyProfileRepository) : IAdminService
+    public class AdminService(UserManager<User> userManager, ICompanyProfileRepository companyProfileRepository,IAppLogRepository logRepository) : IAdminService
     {
         private readonly UserManager<User> _userManager = userManager;
         private readonly ICompanyProfileRepository _companyProfileRepository = companyProfileRepository;
+        private readonly IAppLogRepository _logRepository = logRepository;
 
         public async Task<bool> AddNewAdmin(AddAdminDTO model)
         {
@@ -51,6 +54,40 @@ namespace Infrastructure.Services
             _companyProfileRepository.Update(company);
             await _companyProfileRepository.SaveChangesAsync();
             return true;
+        }
+
+        // Fix for CS1061: 'IAppLogRepository' does not contain a definition for 'Query'.
+        // The error indicates that the 'Query' method is not defined in the IAppLogRepository interface.
+        // Based on the IRepository<T> interface provided, we can use GetWhere or GetAll methods to retrieve logs.
+
+        public async Task<PaginatedResult<LogListItemDTO>> GetLogsAsync(PaginationRequest request)
+        {
+            // Fetch all logs and order them by Timestamp descending
+            var logs = await _logRepository.GetAllAsync();
+            var query = logs.OrderByDescending(l => l.Timestamp);
+
+            var totalCount = query.Count();
+            var items = query
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(l => new LogListItemDTO
+                {
+                    Id = l.Id,
+                    Action = l.Action,
+                    RelatedEntityId = l.RelatedEntityId,
+                    UserName = l.UserName,
+                    Timestamp = l.Timestamp,
+                    Details = l.Details
+                })
+                .ToList();
+
+            return new PaginatedResult<LogListItemDTO>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = request.Page,
+                PageSize = request.PageSize
+            };
         }
     }
 }

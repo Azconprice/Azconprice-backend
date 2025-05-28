@@ -52,16 +52,16 @@ namespace Infrastructure.Services
             return dto;
         }
 
-        public async Task<bool> UpdateWorkerProfile(string id, WorkerUpdateProfileDTO model, Func<string, string, string> generateConfirmationUrl)
+        public async Task<WorkerProfileDTO?> UpdateWorkerProfile(string id, WorkerUpdateProfileDTO model, Func<string, string, string> generateConfirmationUrl)
         {
             var workerProfile = await _workerProfileRepository.GetByUserIdAsync(id);
             if (workerProfile == null)
-                return false;
+                return null;
 
             // Update related User entity
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
-                return false;
+                return null;
 
             bool emailChanged = false;
 
@@ -134,9 +134,11 @@ namespace Infrastructure.Services
                 workerProfile.User.ProfilePicture = profilePictureUrl;
             }
 
+            var dto = _mapper.Map<WorkerProfileDTO>(workerProfile);
+
             _workerProfileRepository.Update(workerProfile);
             await _workerProfileRepository.SaveChangesAsync();
-            return true;
+            return dto;
         }
 
         public async Task<bool> AreSpecializationsValid(IEnumerable<string> specializationIds)

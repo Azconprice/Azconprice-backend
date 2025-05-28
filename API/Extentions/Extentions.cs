@@ -157,6 +157,7 @@ namespace API.Extentions
             services.AddScoped<ISpecializationRepository, SpecializationRepository>();
             services.AddScoped<IWorkerProfileRepository, WorkerProfileRepository>();
             services.AddScoped<ICompanyProfileRepository, CompanyProfileRepository>();
+            services.AddScoped<IAppLogRepository, AppLogRepository>();
 
             return services;
         }
@@ -168,6 +169,7 @@ namespace API.Extentions
             services.AddScoped<IClientService, ClientService>();
             services.AddScoped<IProfessionService, ProfessionService>();
             services.AddScoped<ISpecializationService, SpecializationService>();
+            services.AddScoped<IAppLogger, AppLogger>();
             services.AddAutoMapper(typeof(MappingProfile));
             services.AddScoped<IMailService, MailService>();
             var smtpConfig = new SMTPConfig();

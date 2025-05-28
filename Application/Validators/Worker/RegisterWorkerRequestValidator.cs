@@ -5,6 +5,7 @@ namespace Application.Validators.Worker
 {
     public class RegisterWorkerRequestValidator : AbstractValidator<RegisterWorkerRequest>
     {
+        private const string AzerbaijanPhoneRegex = @"^\+994[-\s]?(10|50|51|55|60|70|77|99)[-\s]?\d{3}[-\s]?\d{2}[-\s]?\d{2}$";
         public RegisterWorkerRequestValidator()
         {
             RuleFor(x => x.FirstName)
@@ -30,7 +31,7 @@ namespace Application.Validators.Worker
 
             RuleFor(x => x.PhoneNumber)
                 .NotEmpty().WithMessage("Phone number is required.")
-                .Matches(@"^\+994([ -]?)(10)([ -]?\d{3})([ -]?\d{2})([ -]?\d{2})$")
+                .Matches(AzerbaijanPhoneRegex)
                 .WithMessage("Phone number must be in one of the following formats: +994102122908, +994 10 212 29 08, or +994-10-212-29-08.");
 
             RuleFor(x => x.Specizalizations)
