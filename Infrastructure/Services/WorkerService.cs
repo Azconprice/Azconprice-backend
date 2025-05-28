@@ -52,7 +52,7 @@ namespace Infrastructure.Services
             return dto;
         }
 
-        public async Task<bool> UpdateWorkerProfile(WorkerUpdateProfileDTO model, string id)
+        public async Task<bool> UpdateWorkerProfile(string id, WorkerUpdateProfileDTO model, Func<string, string, string> generateConfirmationUrl)
         {
             var workerProfile = await _workerProfileRepository.GetByUserIdAsync(id);
             if (workerProfile == null)

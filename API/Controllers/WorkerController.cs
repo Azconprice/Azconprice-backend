@@ -11,7 +11,7 @@ namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class WorkerController(IWorkerService service,IValidator<WorkerUpdateProfileDTO> validator) : ControllerBase
+    public class WorkerController(IWorkerService service, IValidator<WorkerUpdateProfileDTO> validator) : ControllerBase
     {
         private readonly IWorkerService _service = service;
         private readonly IValidator<WorkerUpdateProfileDTO> _validator = validator;
@@ -64,7 +64,11 @@ namespace API.Controllers
 
             try
             {
-                var updated = await _service.UpdateWorkerProfile(updateDto, userId);
+                var updated = await _service.UpdateWorkerProfile(
+                    userId,
+                    updateDto,
+                    (email, token) => Url.Action("ConfirmEmail", "Auth", new { email, token }, Request.Scheme) ?? string.Empty
+                );
                 if (!updated)
                     return NotFound("Worker profile not found.");
 
@@ -93,7 +97,11 @@ namespace API.Controllers
 
             try
             {
-                var updated = await _service.UpdateWorkerProfile(updateDto, id);
+                var updated = await _service.UpdateWorkerProfile(
+                    id,
+                    updateDto,
+                    (email, token) => Url.Action("ConfirmEmail", "Auth", new { email, token }, Request.Scheme) ?? string.Empty // Ensure non-null return
+                );
                 if (!updated)
                     return NotFound("Worker profile not found.");
 

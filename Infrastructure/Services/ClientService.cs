@@ -49,7 +49,7 @@ namespace Infrastructure.Services
             return dto;
         }
 
-        public async Task<bool> UpdateUserAsync(string id, UserUpdateDTO model)
+        public async Task<bool> UpdateUserAsync(string id, UserUpdateDTO model, Func<string, string, string> generateConfirmationUrl)
         {
             // Update related User entity
             var user = await _userManager.FindByIdAsync(id);

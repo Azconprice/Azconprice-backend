@@ -311,15 +311,39 @@ namespace API.Controllers
 
         [HttpGet]
         [ApiExplorerSettings(IgnoreApi = true)]
-        public async Task<ActionResult> ConfirmEmail(string email, string token)
+        public async Task<IActionResult> ConfirmEmail(string email, string token)
         {
             var user = await _userManager.FindByEmailAsync(email);
             if (user is not null)
             {
                 var result = await _userManager.ConfirmEmailAsync(user, token);
-                return Ok();
+                if (result.Succeeded)
+                {
+                    return Content(
+                        "<html><body style='font-family:sans-serif;text-align:center;padding-top:50px;'>" +
+                        "<h2>Email confirmed successfully!</h2>" +
+                        "<p>You can now close this page and return to the app.</p>" +
+                        "</body></html>",
+                        "text/html"
+                    );
+                }
+                else
+                {
+                    return Content(
+                        "<html><body style='font-family:sans-serif;text-align:center;padding-top:50px;'>" +
+                        "<h2>Invalid or expired confirmation link.</h2>" +
+                        "<p>Please request a new confirmation email.</p>" +
+                        "</body></html>",
+                        "text/html"
+                    );
+                }
             }
-            return BadRequest();
+            return Content(
+                "<html><body style='font-family:sans-serif;text-align:center;padding-top:50px;'>" +
+                "<h2>User not found.</h2>" +
+                "</body></html>",
+                "text/html"
+            );
         }
     }
 }

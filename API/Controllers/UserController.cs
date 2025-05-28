@@ -9,7 +9,7 @@ namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UserController(IClientService service,IValidator<UserUpdateDTO> validator) : Controller
+    public class UserController(IClientService service, IValidator<UserUpdateDTO> validator) : Controller
     {
         private readonly IClientService _service = service;
         private readonly IValidator<UserUpdateDTO> _validator = validator;
@@ -62,7 +62,7 @@ namespace API.Controllers
 
             try
             {
-                var updated = await _service.UpdateUserAsync(userId, updateDto);
+                var updated = await _service.UpdateUserAsync(userId, updateDto, (email, token) => Url.Action("ConfirmEmail", "Auth", new { email, token }, Request.Scheme) ?? string.Empty);
                 if (!updated)
                     return NotFound("User profile not found.");
 
@@ -91,7 +91,7 @@ namespace API.Controllers
 
             try
             {
-                var updated = await _service.UpdateUserAsync(id, updateDto);
+                var updated = await _service.UpdateUserAsync(id, updateDto, (email, token) => Url.Action("ConfirmEmail", "Auth", new { email, token }, Request.Scheme) ?? string.Empty);
                 if (!updated)
                     return NotFound("Worker profile not found.");
 
