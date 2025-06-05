@@ -32,9 +32,10 @@ namespace Persistence.Contexts
                 .OnDelete(DeleteBehavior.Cascade);
         }
 
-        DbSet<Profession> Professions { get; set; }
-        DbSet<Specialization> Specializations { get; set; }
-        DbSet<UserSpecialization> UserSpecializations { get; set; }
+        public DbSet<Profession> Professions { get; set; }
+        public DbSet<Specialization> Specializations { get; set; }
+        public DbSet<UserSpecialization> UserSpecializations { get; set; }
+        public DbSet<Request> Requests { get; set; }
         public DbSet<WorkerProfile> WorkerProfiles { get; set; }
         public DbSet<CompanyProfile> CompanyProfiles { get; set; }
         public DbSet<AppLog> AppLogs { get; set; }

@@ -156,7 +156,7 @@ namespace API.Controllers
 
         [HttpDelete("profile/me")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker")]
-        public async Task<IActionResult> DeleteMyProfile(string id)
+        public async Task<IActionResult> DeleteMyProfile()
         {
             var userId = User.FindFirst("userId")?.Value;
             if (string.IsNullOrEmpty(userId))

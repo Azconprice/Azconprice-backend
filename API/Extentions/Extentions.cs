@@ -158,6 +158,7 @@ namespace API.Extentions
             services.AddScoped<IWorkerProfileRepository, WorkerProfileRepository>();
             services.AddScoped<ICompanyProfileRepository, CompanyProfileRepository>();
             services.AddScoped<IAppLogRepository, AppLogRepository>();
+            services.AddScoped<IRequestRepository, RequestRepository>();
 
             return services;
         }
@@ -169,6 +170,7 @@ namespace API.Extentions
             services.AddScoped<IClientService, ClientService>();
             services.AddScoped<IProfessionService, ProfessionService>();
             services.AddScoped<ISpecializationService, SpecializationService>();
+            services.AddScoped<IRequestService, RequestService>();
             services.AddScoped<IAppLogger, AppLogger>();
             services.AddAutoMapper(typeof(MappingProfile));
             services.AddScoped<IMailService, MailService>();

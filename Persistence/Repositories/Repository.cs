@@ -59,6 +59,7 @@ namespace Persistence.Repositories
         public async Task<bool> RemoveAsync(string id)
         {
             T? model = await Table.FindAsync(Guid.Parse(id));
+            if (model == null) return false;
             var entry = Table.Remove(model);
             return entry.State == EntityState.Deleted;
         }
@@ -69,6 +70,11 @@ namespace Persistence.Repositories
         {
             var entry = Table.Update(entity);
             return entry.State == EntityState.Modified;
+        }
+
+        public IQueryable<T> Query()
+        {
+            return _context.Set<T>();
         }
     }
 }

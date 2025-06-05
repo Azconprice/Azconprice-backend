@@ -25,6 +25,8 @@ namespace Application.Repositories
 
         Task<bool> RemoveAsync(string id);
 
+        IQueryable<T> Query();
+
         Task<int> SaveChangesAsync();
     }
 }
