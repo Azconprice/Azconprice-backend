@@ -8,6 +8,7 @@ namespace Domain.Entities
         public string? TaxId { get; set; }
         public string Address { get; set; }
         public int Experience { get; set; }
+        public virtual ICollection<WorkerSpecialization> WorkerSpecialization { get; set; }
         public double Price { get; set; }
     }
 }

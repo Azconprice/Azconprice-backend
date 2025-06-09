@@ -115,11 +115,6 @@ namespace API.Controllers
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
 
-            var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            var url = Url.Action(nameof(ConfirmEmail), "Auth", new { email = user.Email, token = confirmToken }, Request.Scheme);
-            if (url is not null)
-                _mailService.SendConfirmationMessage(user.Email, url);
-
             await _userManager.AddToRoleAsync(user, "User");
 
             await _appLogger.LogAsync(
@@ -134,12 +129,12 @@ namespace API.Controllers
         }
 
         [HttpPost("resend-confirmation")]
-        public async Task<IActionResult> ResendConfirmation([FromBody] string email)
+        public async Task<IActionResult> ResendConfirmation([FromBody] SendEmailConfrimation emailConfrimation)
         {
-            if (string.IsNullOrWhiteSpace(email))
+            if (string.IsNullOrWhiteSpace(emailConfrimation.Email))
                 return BadRequest("Email is required.");
 
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByEmailAsync(emailConfrimation.Email);
             if (user is null)
                 return BadRequest("User with this email does not exist.");
 
@@ -235,11 +230,6 @@ namespace API.Controllers
                 await _workerProfileRepository.AddAsync(workerProfile);
                 await _workerProfileRepository.SaveChangesAsync();
 
-                var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                var url = Url.Action(nameof(ConfirmEmail), "Auth", new { email = user.Email, token = confirmToken }, Request.Scheme);
-                if (url is not null)
-                    _mailService.SendConfirmationMessage(user.Email, url);
-
                 await _userManager.AddToRoleAsync(user, "Worker");
 
                 await _appLogger.LogAsync(
@@ -319,11 +309,6 @@ namespace API.Controllers
             await _companyProfileRepository.AddAsync(companyProfile);
             await _companyProfileRepository.SaveChangesAsync();
 
-            var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            var url = Url.Action(nameof(ConfirmEmail), "Auth", new { email = user.Email, token = confirmToken }, Request.Scheme);
-            if (url is not null)
-                _mailService.SendConfirmationMessage(user.Email, url);
-
             await _userManager.AddToRoleAsync(user, "Company");
 
             await _appLogger.LogAsync(
@@ -374,6 +359,25 @@ namespace API.Controllers
                 return Unauthorized();
 
             return await GenerateToken(user);
+        }
+
+        [HttpPost("send-email-confirmation")]
+        public async Task<ActionResult> SendEmailConfirmation([FromBody] SendEmailConfrimation emailConfrimation)
+        {
+            if (string.IsNullOrWhiteSpace(emailConfrimation.Email))
+                return BadRequest("Email is required.");
+
+            var user = await _userManager.FindByEmailAsync(emailConfrimation.Email);
+
+            if (user is null)
+                return BadRequest("User with this email does not exist.");
+
+            var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var url = Url.Action(nameof(ConfirmEmail), "Auth", new { email = user.Email, token = confirmToken }, Request.Scheme);
+            if (url is not null)
+                _mailService.SendConfirmationMessage(user.Email, url);
+
+            return Ok("Confirmation email sent.");
         }
 
         [HttpGet]

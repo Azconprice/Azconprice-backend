@@ -2,10 +2,10 @@ using System;
 
 namespace Domain.Entities
 {
-    public class UserSpecialization : BaseEntity
+    public class WorkerSpecialization : BaseEntity
     {
-        public Guid UserId { get; set; }
-        public virtual User User { get; set; }
+        public Guid WorkerId { get; set; }
+        public virtual WorkerProfile WorkerProfile { get; set; }
         public Guid SpecializationId { get; set; }
         public virtual Specialization Specialization { get; set; }
     }

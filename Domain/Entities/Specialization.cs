@@ -5,6 +5,6 @@ namespace Domain.Entities
         public string Name { get; set; }
         public Guid ProfessionId { get; set; }
         public virtual Profession Profession { get; set; }
-        public virtual ICollection<UserSpecialization> UserSpecializations { get; set; }
+        public virtual ICollection<WorkerSpecialization> WorkerSpecializations { get; set; }
     }
 }

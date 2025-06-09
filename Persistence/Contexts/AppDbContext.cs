@@ -34,7 +34,7 @@ namespace Persistence.Contexts
 
         public DbSet<Profession> Professions { get; set; }
         public DbSet<Specialization> Specializations { get; set; }
-        public DbSet<UserSpecialization> UserSpecializations { get; set; }
+        public DbSet<WorkerSpecialization> WorkerSpecializations { get; set; }
         public DbSet<Request> Requests { get; set; }
         public DbSet<WorkerProfile> WorkerProfiles { get; set; }
         public DbSet<CompanyProfile> CompanyProfiles { get; set; }
