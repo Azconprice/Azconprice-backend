@@ -4,6 +4,7 @@ using Application.Models.DTOs.Worker;
 using Application.Models.DTOs.User;
 using Application.Models.DTOs;
 using Domain.Enums;
+using Application.Models.DTOs.SalesCategory;
 
 public class MappingProfile : Profile
 {
@@ -22,5 +23,7 @@ public class MappingProfile : Profile
 
         CreateMap<Request, RequestShowDTO>()
             .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Type.ToString()));
+
+        CreateMap<SalesCategory, SalesCategoryShowDTO>();
     }
 }

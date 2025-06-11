@@ -30,8 +30,26 @@ namespace Persistence.Contexts
                 .WithOne()
                 .HasForeignKey<WorkerProfile>(wp => wp.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CompanyProfile>()
+                .HasOne(p => p.SalesCategory)
+                .WithMany(p => p.CompanyProfiles)
+                .HasForeignKey(p => p.SalesCategoryId);
+
+            modelBuilder.Entity<Profession>()
+                .HasIndex(p => p.Name)
+                .IsUnique();
+
+            modelBuilder.Entity<Specialization>()
+                .HasIndex(s => s.Name)
+                .IsUnique();
+
+            modelBuilder.Entity<SalesCategory>()
+               .HasIndex(sc => sc.Name)
+               .IsUnique();
         }
 
+        public DbSet<SalesCategory> SalesCategory { get; set; }
         public DbSet<Profession> Professions { get; set; }
         public DbSet<Specialization> Specializations { get; set; }
         public DbSet<WorkerSpecialization> WorkerSpecializations { get; set; }

@@ -8,5 +8,7 @@ namespace Domain.Entities
         public string Address { get; set; }
         public string? CompanyLogo { get; set; }
         public bool IsConfirmed { get; set; }
+        public Guid SalesCategoryId { get; set; }
+        public virtual SalesCategory SalesCategory { get; set; }
     }
 }

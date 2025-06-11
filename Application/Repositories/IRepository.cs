@@ -27,6 +27,8 @@ namespace Application.Repositories
 
         IQueryable<T> Query();
 
+        Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
+
         Task<int> SaveChangesAsync();
     }
 }

@@ -12,6 +12,15 @@ builder.Services.AddDomainServices(builder.Configuration);
 builder.Services.AddAuthenticationAndAuthorization(builder.Configuration);
 builder.Services.AddValidators();
 builder.Services.AddSupabaseStorage(builder.Configuration);
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 builder.Host.UseSerilog((context, configuration) => configuration.ReadFrom.Configuration(context.Configuration));
 
 //builder.WebHost.ConfigureKestrel(serverOptions =>
@@ -20,6 +29,25 @@ builder.Host.UseSerilog((context, configuration) => configuration.ReadFrom.Confi
 //});
 
 var app = builder.Build();
+
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        var exceptionHandlerPathFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+        var error = exceptionHandlerPathFeature?.Error;
+
+        // Optionally log the error here
+
+        await context.Response.WriteAsJsonAsync(new
+        {
+            Error = "An unexpected error occurred.",
+            Details = error?.Message // Remove in production for security
+        });
+    });
+});
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>
