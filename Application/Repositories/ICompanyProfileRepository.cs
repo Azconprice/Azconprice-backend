@@ -4,6 +4,6 @@ namespace Application.Repositories
 {
     public interface ICompanyProfileRepository : IRepository<CompanyProfile>
     {
-        // Add company-specific methods if needed
+        Task<CompanyProfile?> GetByUserIdAsync(string userId);
     }
 }

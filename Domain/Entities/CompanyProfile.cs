@@ -10,5 +10,6 @@ namespace Domain.Entities
         public bool IsConfirmed { get; set; }
         public Guid SalesCategoryId { get; set; }
         public virtual SalesCategory SalesCategory { get; set; }
+        public string CompanyName { get; set; }
     }
 }

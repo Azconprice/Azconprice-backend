@@ -1,7 +1,7 @@
 using Application.Models.DTOs.Company;
 using FluentValidation;
 
-namespace Application.Validators
+namespace Application.Validators.Company
 {
     public class RegisterCompanyRequestValidator : AbstractValidator<RegisterCompanyRequest>
     {

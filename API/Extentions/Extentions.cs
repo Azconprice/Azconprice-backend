@@ -174,6 +174,7 @@ namespace API.Extentions
             services.AddScoped<IRequestService, RequestService>();
             services.AddScoped<IAppLogger, AppLogger>();
             services.AddScoped<ISalesCategoryService, SalesCategoryService>();
+            services.AddScoped<ICompanyService, CompanyService>();
             services.AddAutoMapper(typeof(MappingProfile));
             services.AddScoped<IMailService, MailService>();
             var smtpConfig = new SMTPConfig();

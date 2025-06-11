@@ -11,7 +11,7 @@ namespace Application.Models.DTOs.Company
         public string? PhoneNumber { get; set; }
         public string TaxId { get; set; }
         public string Address { get; set; }
-        public string SalesCategory { get; set; }
+        public string SalesCategoryId { get; set; }
         public IFormFile? Logo { get; set; }
     }
 }

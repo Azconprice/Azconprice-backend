@@ -29,8 +29,8 @@ namespace API.Controllers
         ICompanyProfileRepository companyProfileRepository,
         IBucketService bucketService,
         IWorkerService workerService,
-        IAppLogger appLogger
-    ) : ControllerBase
+        IAppLogger appLogger,
+        ICompanyService companyService) : ControllerBase
     {
         private readonly UserManager<User> _userManager = userManager;
         private readonly SignInManager<User> _signInManager = signInManager;
@@ -45,6 +45,7 @@ namespace API.Controllers
         private readonly IBucketService _bucketService = bucketService;
         private readonly IWorkerService _workerService = workerService;
         private readonly IAppLogger _appLogger = appLogger;
+        private readonly ICompanyService _companyService = companyService;
 
         private async Task<AuthTokenDTO> GenerateToken(User user)
         {
@@ -263,6 +264,11 @@ namespace API.Controllers
                 return BadRequest(new { Errors = errors });
             }
 
+            if (await _companyService.IsSalesCategoryValid(request.SalesCategoryId) is false)
+            {
+                return BadRequest(new { Error = "Invalid sales category ID." });
+            }
+
             string? logo = null;
             if (request.Logo != null)
             {
@@ -300,11 +306,13 @@ namespace API.Controllers
 
             var companyProfile = new CompanyProfile
             {
+                CompanyName = request.CompanyName,
                 UserId = user.Id,
                 TaxId = request.TaxId,
                 Address = request.Address,
                 CompanyLogo = logo,
-                IsConfirmed = false
+                IsConfirmed = false,
+                SalesCategoryId = Guid.Parse(request.SalesCategoryId)
             };
             await _companyProfileRepository.AddAsync(companyProfile);
             await _companyProfileRepository.SaveChangesAsync();
