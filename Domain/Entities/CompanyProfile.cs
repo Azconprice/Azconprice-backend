@@ -5,7 +5,6 @@ namespace Domain.Entities
         public string UserId { get; set; }
         public virtual User User { get; set; }
         public string TaxId { get; set; }
-        public string Address { get; set; }
         public string? CompanyLogo { get; set; }
         public bool IsConfirmed { get; set; }
         public Guid SalesCategoryId { get; set; }

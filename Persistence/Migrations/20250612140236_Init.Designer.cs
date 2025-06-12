@@ -12,8 +12,8 @@ using Persistence.Contexts;
 namespace Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250528085639_CompanyIsConfirmedAdded")]
-    partial class CompanyIsConfirmedAdded
+    [Migration("20250612140236_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -28,6 +28,39 @@ namespace Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Domain.Entities.AppLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RelatedEntityId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserName")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AppLogs");
+                });
+
             modelBuilder.Entity("Domain.Entities.CompanyProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -41,11 +74,18 @@ namespace Persistence.Migrations
                     b.Property<string>("CompanyLogo")
                         .HasColumnType("text");
 
+                    b.Property<string>("CompanyName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsConfirmed")
                         .HasColumnType("boolean");
+
+                    b.Property<Guid>("SalesCategoryId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("TaxId")
                         .IsRequired()
@@ -56,6 +96,8 @@ namespace Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SalesCategoryId");
 
                     b.HasIndex("UserId");
 
@@ -81,7 +123,64 @@ namespace Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Name")
+                        .IsUnique();
+
                     b.ToTable("Professions");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Request", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Requests");
+                });
+
+            modelBuilder.Entity("Domain.Entities.SalesCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("SalesCategory");
                 });
 
             modelBuilder.Entity("Domain.Entities.Specialization", b =>
@@ -101,6 +200,9 @@ namespace Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.HasIndex("ProfessionId");
 
@@ -185,34 +287,6 @@ namespace Persistence.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("Domain.Entities.UserSpecialization", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("SpecializationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("UserId1")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SpecializationId");
-
-                    b.HasIndex("UserId1");
-
-                    b.ToTable("UserSpecializations");
-                });
-
             modelBuilder.Entity("Domain.Entities.WorkerProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -248,6 +322,33 @@ namespace Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("WorkerProfiles");
+                });
+
+            modelBuilder.Entity("Domain.Entities.WorkerSpecialization", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SpecializationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WorkerProfileId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SpecializationId");
+
+                    b.HasIndex("WorkerProfileId");
+
+                    b.ToTable("WorkerSpecializations");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -384,11 +485,19 @@ namespace Persistence.Migrations
 
             modelBuilder.Entity("Domain.Entities.CompanyProfile", b =>
                 {
+                    b.HasOne("Domain.Entities.SalesCategory", "SalesCategory")
+                        .WithMany("CompanyProfiles")
+                        .HasForeignKey("SalesCategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("SalesCategory");
 
                     b.Navigation("User");
                 });
@@ -404,25 +513,6 @@ namespace Persistence.Migrations
                     b.Navigation("Profession");
                 });
 
-            modelBuilder.Entity("Domain.Entities.UserSpecialization", b =>
-                {
-                    b.HasOne("Domain.Entities.Specialization", "Specialization")
-                        .WithMany("UserSpecializations")
-                        .HasForeignKey("SpecializationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Entities.User", "User")
-                        .WithMany("UserSpecializations")
-                        .HasForeignKey("UserId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Specialization");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Domain.Entities.WorkerProfile", b =>
                 {
                     b.HasOne("Domain.Entities.User", "User")
@@ -432,6 +522,25 @@ namespace Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Domain.Entities.WorkerSpecialization", b =>
+                {
+                    b.HasOne("Domain.Entities.Specialization", "Specialization")
+                        .WithMany("WorkerSpecializations")
+                        .HasForeignKey("SpecializationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.WorkerProfile", "WorkerProfile")
+                        .WithMany("WorkerSpecialization")
+                        .HasForeignKey("WorkerProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Specialization");
+
+                    b.Navigation("WorkerProfile");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -490,14 +599,19 @@ namespace Persistence.Migrations
                     b.Navigation("Specializations");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Specialization", b =>
+            modelBuilder.Entity("Domain.Entities.SalesCategory", b =>
                 {
-                    b.Navigation("UserSpecializations");
+                    b.Navigation("CompanyProfiles");
                 });
 
-            modelBuilder.Entity("Domain.Entities.User", b =>
+            modelBuilder.Entity("Domain.Entities.Specialization", b =>
                 {
-                    b.Navigation("UserSpecializations");
+                    b.Navigation("WorkerSpecializations");
+                });
+
+            modelBuilder.Entity("Domain.Entities.WorkerProfile", b =>
+                {
+                    b.Navigation("WorkerSpecialization");
                 });
 #pragma warning restore 612, 618
         }

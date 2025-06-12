@@ -11,5 +11,6 @@ namespace Application.Models.DTOs.User
         public string? ConfirmPassword { get; set; }
         public string? PhoneNumber { get; set; }
         public IFormFile? ProfilePicture { get; set; }
+        public string Address { get; set; }
     }
 }

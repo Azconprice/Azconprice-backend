@@ -110,7 +110,7 @@ namespace Infrastructure.Services
                 workerProfile.TaxId = model.TaxId;
 
             if (model.Address != null)
-                workerProfile.Address = model.Address;
+                workerProfile.User.Address = model.Address;
 
             if (model.Experience.HasValue)
                 workerProfile.Experience = model.Experience.Value;

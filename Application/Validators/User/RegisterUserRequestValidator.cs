@@ -35,6 +35,9 @@ namespace Application.Validators.User
 
             RuleFor(x => x.ConfirmPassword)
                 .Equal(x => x.Password).WithMessage("Passwords do not match.");
+            RuleFor(x => x.Address)
+               .NotEmpty().WithMessage("Address is required.");
+
         }
     }
 }

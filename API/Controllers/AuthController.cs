@@ -208,6 +208,7 @@ namespace API.Controllers
                     FirstName = request.FirstName,
                     LastName = request.LastName,
                     UserName = request.Email,
+                    Address = request.Address,
                     Email = request.Email,
                     RefreshToken = Guid.NewGuid().ToString("N").ToLower(),
                     ProfilePicture = profilePictureUrl,
@@ -223,7 +224,6 @@ namespace API.Controllers
                     UserId = user.Id,
                     HaveTaxId = request.HaveTaxId,
                     TaxId = request.TaxId,
-                    Address = request.Address,
                     Experience = request.Experience,
                     Price = request.Price,
                 };
@@ -295,6 +295,7 @@ namespace API.Controllers
                 FirstName = request.CompanyName,
                 LastName = request.CompanyName,
                 UserName = request.Email,
+                Address = request.Address,
                 Email = request.Email,
                 RefreshToken = Guid.NewGuid().ToString("N").ToLower(),
                 PhoneNumber = request.PhoneNumber
@@ -309,7 +310,6 @@ namespace API.Controllers
                 CompanyName = request.CompanyName,
                 UserId = user.Id,
                 TaxId = request.TaxId,
-                Address = request.Address,
                 CompanyLogo = logo,
                 IsConfirmed = false,
                 SalesCategoryId = Guid.Parse(request.SalesCategoryId)

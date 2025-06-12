@@ -7,11 +7,29 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "AppLogs",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Action = table.Column<string>(type: "text", nullable: false),
+                    RelatedEntityId = table.Column<string>(type: "text", nullable: true),
+                    UserId = table.Column<string>(type: "text", nullable: true),
+                    UserName = table.Column<string>(type: "text", nullable: true),
+                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Details = table.Column<string>(type: "text", nullable: true),
+                    CreatedTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AppLogs", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
@@ -34,6 +52,7 @@ namespace Persistence.Migrations
                     FirstName = table.Column<string>(type: "text", nullable: false),
                     LastName = table.Column<string>(type: "text", nullable: false),
                     RefreshToken = table.Column<string>(type: "text", nullable: true),
+                    ProfilePicture = table.Column<string>(type: "text", nullable: true),
                     UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -55,7 +74,7 @@ namespace Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Categories",
+                name: "Professions",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -65,7 +84,37 @@ namespace Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Categories", x => x.Id);
+                    table.PrimaryKey("PK_Professions", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Requests",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FullName = table.Column<string>(type: "text", nullable: false),
+                    PhoneNumber = table.Column<string>(type: "text", nullable: false),
+                    Email = table.Column<string>(type: "text", nullable: false),
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    Note = table.Column<string>(type: "text", nullable: false),
+                    CreatedTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Requests", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SalesCategory",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    CreatedTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SalesCategory", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -175,27 +224,103 @@ namespace Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "WorkerCategories",
+                name: "WorkerProfiles",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<string>(type: "text", nullable: false),
-                    CategoryId = table.Column<Guid>(type: "uuid", nullable: false),
+                    HaveTaxId = table.Column<bool>(type: "boolean", nullable: false),
+                    TaxId = table.Column<string>(type: "text", nullable: true),
+                    Address = table.Column<string>(type: "text", nullable: false),
+                    Experience = table.Column<int>(type: "integer", nullable: false),
+                    Price = table.Column<double>(type: "double precision", nullable: false),
                     CreatedTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_WorkerCategories", x => x.Id);
+                    table.PrimaryKey("PK_WorkerProfiles", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_WorkerCategories_AspNetUsers_UserId",
+                        name: "FK_WorkerProfiles_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Specializations",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    ProfessionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Specializations", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Specializations_Professions_ProfessionId",
+                        column: x => x.ProfessionId,
+                        principalTable: "Professions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CompanyProfiles",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<string>(type: "text", nullable: false),
+                    TaxId = table.Column<string>(type: "text", nullable: false),
+                    Address = table.Column<string>(type: "text", nullable: false),
+                    CompanyLogo = table.Column<string>(type: "text", nullable: true),
+                    IsConfirmed = table.Column<bool>(type: "boolean", nullable: false),
+                    SalesCategoryId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CompanyName = table.Column<string>(type: "text", nullable: false),
+                    CreatedTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CompanyProfiles", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CompanyProfiles_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_WorkerCategories_Categories_CategoryId",
-                        column: x => x.CategoryId,
-                        principalTable: "Categories",
+                        name: "FK_CompanyProfiles_SalesCategory_SalesCategoryId",
+                        column: x => x.SalesCategoryId,
+                        principalTable: "SalesCategory",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WorkerSpecializations",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    WorkerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    WorkerProfileId = table.Column<Guid>(type: "uuid", nullable: false),
+                    SpecializationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WorkerSpecializations", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_WorkerSpecializations_Specializations_SpecializationId",
+                        column: x => x.SpecializationId,
+                        principalTable: "Specializations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_WorkerSpecializations_WorkerProfiles_WorkerProfileId",
+                        column: x => x.WorkerProfileId,
+                        principalTable: "WorkerProfiles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -238,19 +363,61 @@ namespace Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_WorkerCategories_CategoryId",
-                table: "WorkerCategories",
-                column: "CategoryId");
+                name: "IX_CompanyProfiles_SalesCategoryId",
+                table: "CompanyProfiles",
+                column: "SalesCategoryId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_WorkerCategories_UserId",
-                table: "WorkerCategories",
+                name: "IX_CompanyProfiles_UserId",
+                table: "CompanyProfiles",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Professions_Name",
+                table: "Professions",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SalesCategory_Name",
+                table: "SalesCategory",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Specializations_Name",
+                table: "Specializations",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Specializations_ProfessionId",
+                table: "Specializations",
+                column: "ProfessionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkerProfiles_UserId",
+                table: "WorkerProfiles",
+                column: "UserId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkerSpecializations_SpecializationId",
+                table: "WorkerSpecializations",
+                column: "SpecializationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkerSpecializations_WorkerProfileId",
+                table: "WorkerSpecializations",
+                column: "WorkerProfileId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "AppLogs");
+
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
 
@@ -267,16 +434,31 @@ namespace Persistence.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "WorkerCategories");
+                name: "CompanyProfiles");
+
+            migrationBuilder.DropTable(
+                name: "Requests");
+
+            migrationBuilder.DropTable(
+                name: "WorkerSpecializations");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "AspNetUsers");
+                name: "SalesCategory");
 
             migrationBuilder.DropTable(
-                name: "Categories");
+                name: "Specializations");
+
+            migrationBuilder.DropTable(
+                name: "WorkerProfiles");
+
+            migrationBuilder.DropTable(
+                name: "Professions");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUsers");
         }
     }
 }

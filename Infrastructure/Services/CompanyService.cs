@@ -89,7 +89,7 @@ namespace Infrastructure.Services
             }
 
             if (!string.IsNullOrEmpty(model.Address))
-                companyProfile.Address = model.Address;
+                companyProfile.User.Address = model.Address;
 
             if (!string.IsNullOrEmpty(model.SalesCategoryId) && await IsSalesCategoryValid(model.SalesCategoryId) && Guid.TryParse(model.SalesCategoryId, out var salesCategoryId))
                 companyProfile.SalesCategoryId = salesCategoryId;

@@ -28,6 +28,11 @@ namespace Application.Validators.User
                 .EmailAddress()
                 .When(x => !string.IsNullOrEmpty(x.Email))
                 .WithMessage("Invalid email format.");
+
+            RuleFor(x => x.Address)
+                .MaximumLength(200)
+                .When(x => x.Address != null)
+                .WithMessage("Address is too long.");
         }
     }
 }

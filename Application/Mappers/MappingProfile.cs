@@ -1,5 +1,6 @@
 ﻿using Application.Models.DTOs;
 using Application.Models.DTOs.Company;
+using Application.Models.DTOs.Profession;
 using Application.Models.DTOs.SalesCategory;
 using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
@@ -27,5 +28,7 @@ public class MappingProfile : Profile
         CreateMap<CompanyProfile, CompanyProfileDTO>()
             .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User))
             .ForMember(dest => dest.SalesCategory, opt => opt.MapFrom(src => src.SalesCategory));
+
+        CreateMap<Profession, ProfessionShowDTO>();
     }
 }
