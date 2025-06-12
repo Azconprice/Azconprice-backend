@@ -2,6 +2,7 @@
 using Application.Models.DTOs.Company;
 using Application.Models.DTOs.Profession;
 using Application.Models.DTOs.SalesCategory;
+using Application.Models.DTOs.Specialization;
 using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
 using AutoMapper;
@@ -29,6 +30,13 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User))
             .ForMember(dest => dest.SalesCategory, opt => opt.MapFrom(src => src.SalesCategory));
 
-        CreateMap<Profession, ProfessionShowDTO>();
+        // Profession and Specialization mappings
+        CreateMap<Profession, ProfessionShowDTO>()
+            .ForMember(dest => dest.Specializations, opt => opt.MapFrom(src => src.Specializations));
+        CreateMap<Specialization, SpecializationShowDTO>();
+
+        // For nested DTOs (if used in your DTOs)
+        CreateMap<Profession, ProfessionInsideSpecializationDTO>();
+        CreateMap<Specialization, SpecializationInsideProfessionDTO>();
     }
 }

@@ -1,18 +1,15 @@
 ﻿using Application.Models.DTOs.Profession;
 using Application.Repositories;
 using Application.Services;
+using AutoMapper;
 using Domain.Entities;
 
 namespace Infrastructure.Services
 {
-    public class ProfessionService : IProfessionService
+    public class ProfessionService(IProfessionRepository professionRepository, IMapper mapper) : IProfessionService
     {
-        private readonly IProfessionRepository _professionRepository;
-
-        public ProfessionService(IProfessionRepository professionRepository)
-        {
-            _professionRepository = professionRepository;
-        }
+        private readonly IProfessionRepository _professionRepository = professionRepository;
+        private readonly IMapper _mapper = mapper;
 
         public async Task<bool> AddProfessionAsync(ProfessionDTO profession)
         {
@@ -66,12 +63,7 @@ namespace Infrastructure.Services
         public async Task<IEnumerable<ProfessionShowDTO>> GetAllProfessionsAsync()
         {
             var professions = await _professionRepository.GetAllAsync(false);
-            return professions.Select(p => new ProfessionShowDTO
-            {
-                Id = p.Id.ToString(),
-                Name = p.Name,
-                Description = p.Description
-            });
+            return professions.Select(p=> _mapper.Map<ProfessionShowDTO>(p));
         }
 
         public async Task<ProfessionShowDTO?> GetProfessionByIdAsync(string id)

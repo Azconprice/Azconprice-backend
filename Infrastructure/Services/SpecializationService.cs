@@ -1,4 +1,5 @@
-﻿using Application.Models.DTOs.Specialization;
+﻿using Application.Models.DTOs.Profession;
+using Application.Models.DTOs.Specialization;
 using Application.Repositories;
 using Application.Services;
 using Domain.Entities;
@@ -52,7 +53,8 @@ namespace Infrastructure.Services
             {
                 Id = s.Id,
                 Name = s.Name,
-                ProfessionId = s.ProfessionId,
+                Profession = new ProfessionInsideSpecializationDTO { Id = s.ProfessionId, Name = s.Profession.Name, Description = s.Profession.Description },
+
             });
         }
 
@@ -66,7 +68,7 @@ namespace Infrastructure.Services
             {
                 Id = specialization.Id,
                 Name = specialization.Name,
-                ProfessionId = specialization.ProfessionId,
+                Profession = new ProfessionInsideSpecializationDTO { Id = specialization.ProfessionId, Name = specialization.Profession.Name, Description = specialization.Profession.Description },
             };
         }
 
