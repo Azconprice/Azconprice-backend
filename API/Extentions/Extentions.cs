@@ -147,7 +147,7 @@ namespace API.Extentions
 
         public static IServiceCollection AddContext(this IServiceCollection services, IConfiguration configuration)
         {
-            var connection = configuration["ConnectionStrings:Default"];
+            var connection = Environment.GetEnvironmentVariable("ConnectionStrings__Default");
             services.AddDbContext<AppDbContext>(options =>
                 options.UseNpgsql(connection).UseLazyLoadingProxies());
             return services;
