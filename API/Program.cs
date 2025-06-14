@@ -3,6 +3,11 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+    .AddEnvironmentVariables();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwagger();
@@ -13,6 +18,7 @@ builder.Services.AddAuthenticationAndAuthorization(builder.Configuration);
 builder.Services.AddValidators();
 builder.Services.AddSupabaseStorage(builder.Configuration);
 builder.Services.AddSMSService(builder.Configuration);
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
