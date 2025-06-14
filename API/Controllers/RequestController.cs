@@ -32,18 +32,18 @@ namespace API.Controllers
             return CreatedAtAction(nameof(GetById), new { requestId = created?.GetType().GetProperty("Id")?.GetValue(created) }, created);
         }
 
-        [HttpDelete("{requestId}")]
+        [HttpDelete("{id}")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
-        public async Task<IActionResult> Delete(string requestId)
+        public async Task<IActionResult> Delete(string id)
         {
-            var deleted = await _requestService.DeleteRequestAsync(requestId);
+            var deleted = await _requestService.DeleteRequestAsync(id);
             if (!deleted)
                 return NotFound(new { Message = "Request not found." });
 
             return Ok(new { Message = "Request deleted successfully." });
         }
 
-        [HttpGet]
+        [HttpGet("list")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         public async Task<ActionResult<PaginatedResult<RequestShowDTO>>> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
@@ -51,11 +51,11 @@ namespace API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("{requestId}")]
+        [HttpGet("{id}")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
-        public async Task<ActionResult<RequestShowDTO>> GetById(string requestId)
+        public async Task<ActionResult<RequestShowDTO>> GetById(string id)
         {
-            var result = await _requestService.GetRequestByIdAsync(requestId);
+            var result = await _requestService.GetRequestByIdAsync(id);
             if (result == null)
                 return NotFound(new { Message = "Request not found." });
 

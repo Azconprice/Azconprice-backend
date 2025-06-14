@@ -23,7 +23,7 @@ namespace API.Controllers
         private readonly IValidator<WorkerUpdateProfileDTO> _validator = validator;
         private readonly IAppLogger _appLogger = appLogger;
 
-        [HttpGet("profile")]
+        [HttpGet("profile/{id}")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker")]
         public async Task<ActionResult<WorkerProfileDTO>> GetProfile(string id)
         {

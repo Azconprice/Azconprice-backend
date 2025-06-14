@@ -20,9 +20,9 @@ namespace API.Controllers
         private readonly IValidator<UpdateCompanyProfileDTO> _validator = validator;
         private readonly IAppLogger _appLogger = appLogger;
 
-        [HttpGet("profile")]
+        [HttpGet("profile/{id}")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
-        public async Task<ActionResult<CompanyProfileDTO>> GetProfile([FromQuery] string id)
+        public async Task<ActionResult<CompanyProfileDTO>> GetProfile(string id)
         {
             var result = await _companyService.GetCompanyProfile(id);
             if (result is not null)

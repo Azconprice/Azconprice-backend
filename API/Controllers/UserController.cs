@@ -24,7 +24,7 @@ namespace API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("profile")]
+        [HttpGet("profile/{id}")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "User")]
         public async Task<ActionResult<WorkerProfileDTO>> GetProfile(string id)
         {
