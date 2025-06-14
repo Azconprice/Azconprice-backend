@@ -19,7 +19,7 @@ namespace API.Controllers
 
         [HttpPost]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker,Company,User")]
-        public async Task<IActionResult> Create([FromBody] RequestDTO dto)
+        public async Task<ActionResult<RequestShowDTO>> Create([FromBody] RequestDTO dto)
         {
             var validationResult = await _requestValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
@@ -45,7 +45,7 @@ namespace API.Controllers
 
         [HttpGet]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
-        public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<PaginatedResult<RequestShowDTO>>> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             var result = await _requestService.GetAllRequestsAsync(new PaginationRequest { Page = page, PageSize = pageSize });
             return Ok(result);
@@ -53,7 +53,7 @@ namespace API.Controllers
 
         [HttpGet("{requestId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
-        public async Task<IActionResult> GetById(string requestId)
+        public async Task<ActionResult<RequestShowDTO>> GetById(string requestId)
         {
             var result = await _requestService.GetRequestByIdAsync(requestId);
             if (result == null)
@@ -64,7 +64,7 @@ namespace API.Controllers
 
         [HttpGet("by-type/{type}")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
-        public async Task<IActionResult> GetByType([FromRoute] string type, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<PaginatedResult<RequestShowDTO>>> GetByType([FromRoute] string type, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {

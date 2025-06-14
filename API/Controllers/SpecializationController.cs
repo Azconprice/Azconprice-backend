@@ -85,7 +85,7 @@ namespace API.Controllers
             }
         }
 
-        [HttpGet]
+        [HttpGet("all")]
         [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<SpecializationShowDTO>>> GetAll()
         {

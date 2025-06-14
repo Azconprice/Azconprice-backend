@@ -1,10 +1,13 @@
-﻿using Application.Models.DTOs.Worker;
+﻿using Application.Models.DTOs;
+using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.User;
+using Application.Models.DTOs.Worker;
 using Application.Repositories;
 using Application.Services;
 using AutoMapper;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services
 {
@@ -139,6 +142,25 @@ namespace Infrastructure.Services
             _workerProfileRepository.Update(workerProfile);
             await _workerProfileRepository.SaveChangesAsync();
             return dto;
+        }
+
+        public async Task<PaginatedResult<WorkerProfileDTO>> GetAllWorkersAsync(PaginationRequest request)
+        {
+            var query = _workerProfileRepository.Query().OrderByDescending(r => r.CreatedTime);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
+
+            return new PaginatedResult<WorkerProfileDTO>
+            {
+                Items = _mapper.Map<IEnumerable<WorkerProfileDTO>>(items),
+                TotalCount = totalCount,
+                Page = request.Page,
+                PageSize = request.PageSize
+            };
         }
 
         public async Task<bool> AreSpecializationsValid(IEnumerable<string> specializationIds)

@@ -1,4 +1,6 @@
-﻿using Application.Models.DTOs.Company;
+﻿using Application.Models.DTOs;
+using Application.Models.DTOs.Company;
+using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
 using Application.Repositories;
@@ -6,6 +8,7 @@ using Application.Services;
 using AutoMapper;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services
 {
@@ -31,6 +34,26 @@ namespace Infrastructure.Services
             _companyProfileRepository.Remove(companyProfile);
             await _companyProfileRepository.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<PaginatedResult<CompanyProfileDTO>> GetAllCompaniesAsync(PaginationRequest request)
+        {
+            var query = _companyProfileRepository.Query().OrderByDescending(r => r.CreatedTime);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
+
+            return new PaginatedResult<CompanyProfileDTO>
+            {
+                Items = _mapper.Map<IEnumerable<CompanyProfileDTO>>(items),
+                TotalCount = totalCount,
+                Page = request.Page,
+                PageSize = request.PageSize
+            };
+
         }
 
         public async Task<CompanyProfileDTO?> GetCompanyProfile(string id)

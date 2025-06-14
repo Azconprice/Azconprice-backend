@@ -1,4 +1,5 @@
-﻿using Application.Models.DTOs.User;
+﻿using Application.Models.DTOs.Pagination;
+using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
 using Application.Services;
 using FluentValidation;
@@ -13,6 +14,15 @@ namespace API.Controllers
     {
         private readonly IClientService _service = service;
         private readonly IValidator<UserUpdateDTO> _validator = validator;
+
+
+        [HttpGet("list")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
+        public async Task<ActionResult<PaginatedResult<UserShowDTO>>> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            var result = await _service.GetAllUsersAsync(new PaginationRequest { Page = page, PageSize = pageSize });
+            return Ok(result);
+        }
 
         [HttpGet("profile")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "User")]
@@ -40,6 +50,7 @@ namespace API.Controllers
 
             return NotFound("User profile not found.");
         }
+
 
         [HttpPatch("profile/me")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "User")]

@@ -74,7 +74,7 @@ namespace API.Controllers
         }
 
         [HttpGet("logs")]
-        public async Task<ActionResult<IEnumerable<PaginatedResult<LogListItemDTO>>>> GetLogs([FromQuery] int page, [FromQuery] int pageSize)
+        public async Task<ActionResult<PaginatedResult<LogListItemDTO>>> GetLogs([FromQuery] int page, [FromQuery] int pageSize)
         {
             try
             {

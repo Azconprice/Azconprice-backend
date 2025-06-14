@@ -1,4 +1,5 @@
 ﻿using Application.Models.DTOs.Company;
+using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.Worker;
 
 namespace Application.Services
@@ -9,5 +10,6 @@ namespace Application.Services
         Task<CompanyProfileDTO?> UpdateCompanyProfile(string id, UpdateCompanyProfileDTO model, Func<string, string, string> generateConfirmationUrl);
         Task<bool> DeleteCompanyProfile(string id);
         Task<bool> IsSalesCategoryValid(string salesCategoryId);
+        Task<PaginatedResult<CompanyProfileDTO>> GetAllCompaniesAsync(PaginationRequest request);
     }
 }

@@ -14,7 +14,7 @@ namespace API.Controllers
     {
         private readonly ISalesCategoryService _salesCategoryService = salesCategoryService;
 
-        [HttpGet]
+        [HttpGet("all")]
         public async Task<ActionResult<IEnumerable<SalesCategoryShowDTO>>> GetAll()
         {
             var result = await _salesCategoryService.GetAllAsync();

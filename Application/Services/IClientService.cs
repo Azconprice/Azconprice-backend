@@ -1,4 +1,5 @@
-﻿using Application.Models.DTOs.User;
+﻿using Application.Models.DTOs.Pagination;
+using Application.Models.DTOs.User;
 
 namespace Application.Services
 {
@@ -7,5 +8,6 @@ namespace Application.Services
         Task<UserShowDTO?> GetUserByIdAsync(string id);
         Task<bool> UpdateUserAsync(string id,UserUpdateDTO model, Func<string, string, string> generateConfirmationUrl);
         Task<bool> DeleteUserAsync(string id);
+        Task<PaginatedResult<UserShowDTO>> GetAllUsersAsync(PaginationRequest request);
     }
 }

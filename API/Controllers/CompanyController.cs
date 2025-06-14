@@ -1,4 +1,5 @@
 ﻿using Application.Models.DTOs.Company;
+using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.Worker;
 using Application.Services;
 using FluentValidation;
@@ -21,13 +22,21 @@ namespace API.Controllers
 
         [HttpGet("profile")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
-        public async Task<ActionResult<WorkerProfileDTO>> GetProfile([FromQuery] string id)
+        public async Task<ActionResult<CompanyProfileDTO>> GetProfile([FromQuery] string id)
         {
             var result = await _companyService.GetCompanyProfile(id);
             if (result is not null)
                 return Ok(result);
 
             return NotFound("Company profile not found.");
+        }
+
+        [HttpGet("list")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
+        public async Task<ActionResult<PaginatedResult<CompanyProfileDTO>>> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            var result = await _companyService.GetAllCompaniesAsync(new PaginationRequest { Page = page, PageSize = pageSize });
+            return Ok(result);
         }
 
         [HttpGet("profile/me")]
@@ -47,7 +56,7 @@ namespace API.Controllers
 
         [HttpPatch("profile/me")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Company")]
-        public async Task<IActionResult> PatchMyProfile([FromForm] UpdateCompanyProfileDTO updateDto)
+        public async Task<ActionResult<CompanyProfileDTO>> PatchMyProfile([FromForm] UpdateCompanyProfileDTO updateDto)
         {
             var validationResult = await _validator.ValidateAsync(updateDto);
 

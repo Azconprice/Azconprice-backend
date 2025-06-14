@@ -1,4 +1,5 @@
 ﻿using Application.Models.DTOs;
+using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
 using Application.Repositories;
@@ -6,6 +7,7 @@ using Application.Services;
 using AutoMapper;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Supabase.Gotrue;
 using System;
 using System.Collections.Generic;
@@ -16,12 +18,14 @@ using User = Domain.Entities.User;
 
 namespace Infrastructure.Services
 {
-    public class ClientService(UserManager<User> userManager, IMapper mapper, IBucketService bucketService, IMailService mailService) : IClientService
+    public class ClientService(UserManager<User> userManager, IMapper mapper, IBucketService bucketService, IMailService mailService, ICompanyProfileRepository companyProfileRepository, IWorkerProfileRepository workerProfileRepository) : IClientService
     {
         private readonly UserManager<User> _userManager = userManager;
         private readonly IMapper _mapper = mapper;
         private readonly IBucketService _bucketService = bucketService;
         private readonly IMailService _mailService = mailService;
+        private readonly IWorkerProfileRepository _workerProfileRepository = workerProfileRepository;
+        private readonly ICompanyProfileRepository _companyProfileRepository = companyProfileRepository;
 
         public async Task<bool> DeleteUserAsync(string id)
         {
@@ -47,6 +51,48 @@ namespace Infrastructure.Services
             }
 
             return dto;
+        }
+
+        public async Task<PaginatedResult<UserShowDTO>> GetAllUsersAsync(PaginationRequest request)
+        {
+            var workerUserIds = await _workerProfileRepository.Query()
+              .Select(wp => wp.UserId)
+              .ToListAsync();
+
+            var companyUserIds = await _companyProfileRepository.Query()
+                .Select(cp => cp.UserId)
+                .ToListAsync();
+
+            var excludedUserIds = workerUserIds.Concat(companyUserIds).ToHashSet();
+
+            var usersQuery = _userManager.Users
+                .AsNoTracking()
+                .Where(u => !excludedUserIds.Contains(u.Id))
+                .OrderByDescending(u => u.CreatedTime);
+
+            var totalCount = await usersQuery.CountAsync();
+            var users = await usersQuery
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
+
+            var dtos = _mapper.Map<IEnumerable<UserShowDTO>>(users);
+
+            foreach (var dto in dtos)
+            {
+                if (!string.IsNullOrEmpty(dto.ProfilePicture))
+                {
+                    dto.ProfilePicture = await _bucketService.GetSignedUrlAsync(dto.ProfilePicture);
+                }
+            }
+
+            return new PaginatedResult<UserShowDTO>
+            {
+                Items = dtos,
+                TotalCount = totalCount,
+                Page = request.Page,
+                PageSize = request.PageSize
+            };
         }
 
         public async Task<bool> UpdateUserAsync(string id, UserUpdateDTO model, Func<string, string, string> generateConfirmationUrl)

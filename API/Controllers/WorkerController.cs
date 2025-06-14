@@ -1,5 +1,6 @@
 ﻿using Amazon.Runtime.Internal;
 using Application.Models.DTOs;
+using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.Worker;
 using Application.Services;
 using FluentValidation;
@@ -33,6 +34,13 @@ namespace API.Controllers
             return NotFound("Worker profile not found.");
         }
 
+        [HttpGet("list")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
+        public async Task<ActionResult<PaginatedResult<WorkerProfileDTO>>> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            var result = await _service.GetAllWorkersAsync(new PaginationRequest { Page = page, PageSize = pageSize });
+            return Ok(result);
+        }
 
         [HttpGet("profile/me")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker")]
