@@ -29,7 +29,10 @@ namespace API.Controllers
             }
 
             var created = await _requestService.CreateRequestAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { requestId = created?.GetType().GetProperty("Id")?.GetValue(created) }, created);
+            if (created is null)
+                return StatusCode(500, "Unknown error occured");
+
+            return Ok(created);
         }
 
         [HttpDelete("{id}")]
