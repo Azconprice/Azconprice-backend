@@ -10,9 +10,9 @@ namespace Infrastructure.Services
     {
         private readonly TwilioOptions _options;
 
-        public TwilioService(IOptions<TwilioOptions> options)
+        public TwilioService(TwilioOptions options)
         {
-            _options = options.Value;
+            _options = options;
             TwilioClient.Init(_options.AccountSid, _options.AuthToken);
         }
 

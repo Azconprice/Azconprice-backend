@@ -10,7 +10,6 @@ using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Persistence.Contexts;
@@ -69,10 +68,7 @@ namespace API.Extentions
             var userManager = container.ServiceProvider.GetRequiredService<UserManager<User>>();
             var roleManager = container.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             if (!await roleManager.RoleExistsAsync("Admin"))
-            {
-                _ = await roleManager.CreateAsync(new IdentityRole("Admin"));
-            }
-
+                await roleManager.CreateAsync(new IdentityRole("Admin"));
             if (!await roleManager.RoleExistsAsync("Worker"))
                 await roleManager.CreateAsync(new IdentityRole("Worker"));
             if (!await roleManager.RoleExistsAsync("User"))
@@ -96,8 +92,6 @@ namespace API.Extentions
             }
         }
 
-
-
         public static IServiceCollection AddAuthenticationAndAuthorization(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddIdentity<User, IdentityRole>(op =>
@@ -110,30 +104,30 @@ namespace API.Extentions
                 op.Lockout.AllowedForNewUsers = true;
                 op.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(2);
                 op.Lockout.MaxFailedAccessAttempts = 5;
-            }).AddEntityFrameworkStores<AppDbContext>()
-            .AddDefaultTokenProviders();
+            }).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
 
             services.Configure<DataProtectionTokenProviderOptions>(o =>
             {
                 o.TokenLifespan = TimeSpan.FromHours(1);
             });
 
-            services.AddScoped<IJWTService, JWTService>();
-
-            var jwtConfig = new JWTConfig();
-            configuration.GetSection("JWT").Bind(jwtConfig);
+            var jwtConfig = new JWTConfig
+            {
+                Secret = Environment.GetEnvironmentVariable("JWT__Secret")!,
+                Issuer = Environment.GetEnvironmentVariable("JWT__Issuer")!,
+                Audience = Environment.GetEnvironmentVariable("JWT__Audience")!,
+                ExpireMunites = int.Parse(Environment.GetEnvironmentVariable("JWT__ExpiresInMinutes") ?? "40")
+            };
 
             services.AddSingleton(jwtConfig);
-
-
-            // Add Authentication  after Identity
+            services.AddScoped<IJWTService, JWTService>();
 
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-            }).AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, setup =>
+            }).AddJwtBearer(setup =>
             {
                 setup.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -143,24 +137,31 @@ namespace API.Extentions
                     ValidateIssuerSigningKey = true,
                     ValidAudience = jwtConfig.Audience,
                     ValidIssuer = jwtConfig.Issuer,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.Secret)),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.Secret))
                 };
             });
 
             services.AddAuthorization();
-
             return services;
         }
 
         public static IServiceCollection AddContext(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<AppDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("Default")).UseLazyLoadingProxies());
+            var connection = configuration["ConnectionStrings:Default"];
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseNpgsql(connection).UseLazyLoadingProxies());
             return services;
         }
 
         public static IServiceCollection AddSMSService(this IServiceCollection services, IConfiguration configuration)
         {
-            services.Configure<TwilioOptions>(configuration.GetSection("Twilio"));
+            var twilioOptions = new TwilioOptions
+            {
+                AccountSid = Environment.GetEnvironmentVariable("Twilio__AccountSid")!,
+                AuthToken = Environment.GetEnvironmentVariable("Twilio__AuthToken")!,
+                VerifyServiceSid = Environment.GetEnvironmentVariable("Twilio__VerifyServiceSid")!
+            };
+            services.AddSingleton(twilioOptions);
             services.AddScoped<ISMSService, TwilioService>();
             return services;
         }
@@ -174,12 +175,21 @@ namespace API.Extentions
             services.AddScoped<IAppLogRepository, AppLogRepository>();
             services.AddScoped<IRequestRepository, RequestRepository>();
             services.AddScoped<ISalesCategoryRepository, SalesCategoryRepository>();
-
             return services;
         }
 
         public static IServiceCollection AddDomainServices(this IServiceCollection services, IConfiguration configuration)
         {
+            var smtpConfig = new SMTPConfig
+            {
+                Host = Environment.GetEnvironmentVariable("SMTP__Host")!,
+                Port = int.Parse(Environment.GetEnvironmentVariable("SMTP__Port") ?? "587"),
+                Username = Environment.GetEnvironmentVariable("SMTP__Username")!,
+                Password = Environment.GetEnvironmentVariable("SMTP__Password")!,
+                EnableSsl = bool.Parse(Environment.GetEnvironmentVariable("SMTP__EnableSsl") ?? "true")
+            };
+            services.AddSingleton(smtpConfig);
+
             services.AddScoped<IAdminService, AdminService>();
             services.AddScoped<IWorkerService, WorkerService>();
             services.AddScoped<IClientService, ClientService>();
@@ -189,41 +199,31 @@ namespace API.Extentions
             services.AddScoped<IAppLogger, AppLogger>();
             services.AddScoped<ISalesCategoryService, SalesCategoryService>();
             services.AddScoped<ICompanyService, CompanyService>();
-            services.AddAutoMapper(typeof(MappingProfile));
             services.AddScoped<IMailService, MailService>();
-            var smtpConfig = new SMTPConfig();
-            configuration.GetSection("SMTP").Bind(smtpConfig);
-            services.AddSingleton(smtpConfig);
+            services.AddAutoMapper(typeof(MappingProfile));
             return services;
         }
 
-
-
         public static IServiceCollection AddSupabaseStorage(this IServiceCollection services, IConfiguration config)
         {
-            // Bind Supabase section to a settings class
-            services.Configure<SupabaseSettings>(config.GetSection("Supabase"));
+            var supabaseSettings = new SupabaseSettings
+            {
+                Url = Environment.GetEnvironmentVariable("Supabase__Url")!,
+                ApiKey = Environment.GetEnvironmentVariable("Supabase__ApiKey")!,
+                BucketName = Environment.GetEnvironmentVariable("Supabase__BucketName")!
+            };
 
-            // Inject Client using settings from DI container (not read inline here)
             services.AddSingleton<Client>(sp =>
             {
-                var config = sp.GetRequiredService<IOptions<SupabaseSettings>>().Value;
-                var options = new Supabase.SupabaseOptions
-                {
-                    AutoConnectRealtime = false
-                };
-
-                var client = new Supabase.Client(config.Url, config.ApiKey, options);
-                client.InitializeAsync().Wait(); // OR await in async context
-
+                var options = new Supabase.SupabaseOptions { AutoConnectRealtime = false };
+                var client = new Supabase.Client(supabaseSettings.Url, supabaseSettings.ApiKey, options);
+                client.InitializeAsync().Wait();
                 return client;
             });
 
             services.AddScoped<IBucketService, SupabaseStorageService>();
-
             return services;
         }
-
 
         public static IServiceCollection AddValidators(this IServiceCollection services)
         {
