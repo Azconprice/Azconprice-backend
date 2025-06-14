@@ -111,6 +111,11 @@ namespace API.Extentions
             }).AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
 
+            services.Configure<DataProtectionTokenProviderOptions>(o =>
+            {
+                o.TokenLifespan = TimeSpan.FromHours(1);
+            });
+
             services.AddScoped<IJWTService, JWTService>();
 
             var jwtConfig = new JWTConfig();
