@@ -30,7 +30,9 @@ namespace API.Controllers
         IBucketService bucketService,
         IWorkerService workerService,
         IAppLogger appLogger,
-        ICompanyService companyService) : ControllerBase
+        ICompanyService companyService,
+        ISMSService smsService,
+        IValidator<SendPhoneVerificationRequest> sendPhoneVerificationRequestValidator) : ControllerBase
     {
         private readonly UserManager<User> _userManager = userManager;
         private readonly SignInManager<User> _signInManager = signInManager;
@@ -40,12 +42,14 @@ namespace API.Controllers
         private readonly IValidator<RegisterWorkerRequest> _registerWorkerValidator = registerWorkerValidator;
         private readonly IValidator<RegisterUserRequest> _registerUserValidator = registerUserValidator;
         private readonly IValidator<RegisterCompanyRequest> _registerCompanyValidator = registerCompanyValidator;
+        private readonly IValidator<SendPhoneVerificationRequest> _sendPhoneVerificationRequestValidator = sendPhoneVerificationRequestValidator;
         private readonly IWorkerProfileRepository _workerProfileRepository = workerProfileRepository;
         private readonly ICompanyProfileRepository _companyProfileRepository = companyProfileRepository;
         private readonly IBucketService _bucketService = bucketService;
         private readonly IWorkerService _workerService = workerService;
         private readonly IAppLogger _appLogger = appLogger;
         private readonly ICompanyService _companyService = companyService;
+        private readonly ISMSService _smsService = smsService;
 
         private async Task<AuthTokenDTO> GenerateToken(User user)
         {
@@ -64,6 +68,66 @@ namespace API.Controllers
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
             };
+        }
+
+        [HttpPost("send-phone-verification")]
+        public async Task<IActionResult> SendPhoneVerification([FromBody] SendPhoneVerificationRequest request)
+        {
+            var validationResult = await _sendPhoneVerificationRequestValidator.ValidateAsync(request);
+
+            if (!validationResult.IsValid)
+            {
+                var errors = validationResult.Errors
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+
+                return BadRequest(new { Errors = errors });
+            }
+
+            var status = await _smsService.SendVerificationCodeAsync(request.PhoneNumber);
+
+            return status switch
+            {
+                "pending" => Ok("Verification code sent."),
+                "canceled" => StatusCode(400, "Verification was canceled. Please check the phone number."),
+                "failed" => StatusCode(500, "Failed to send verification code. Please try again later."),
+                _ => StatusCode(500, $"Unexpected status: {status}")
+            };
+        }
+
+        [HttpPost("verify-phone")]
+        public async Task<IActionResult> VerifyPhone([FromBody] VerifyPhoneRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.PhoneNumber) || string.IsNullOrWhiteSpace(request.Code))
+                return BadRequest("Phone number and code are required.");
+
+            var status = await _smsService.VerifyCodeAsync(request.PhoneNumber, request.Code);
+
+            if (status == "approved")
+            {
+                var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
+                if (user is not null)
+                {
+                    if (!user.PhoneNumberConfirmed)
+                    {
+                        user.PhoneNumberConfirmed = true;
+                        await _userManager.UpdateAsync(user);
+                    }
+                }
+                return Ok("Phone number verified successfully.");
+            }
+            else if (status == "pending")
+            {
+                return BadRequest("Verification code is pending or incorrect.");
+            }
+            else if (status == "canceled")
+            {
+                return BadRequest("Verification was canceled. Please request a new code.");
+            }
+            else
+            {
+                return StatusCode(500, $"Unexpected status: {status}");
+            }
         }
 
         [HttpPost("register/user")]
@@ -128,6 +192,8 @@ namespace API.Controllers
 
             return Ok();
         }
+
+
 
         [HttpPost("resend-confirmation")]
         public async Task<IActionResult> ResendConfirmation([FromBody] SendEmailConfrimation emailConfrimation)

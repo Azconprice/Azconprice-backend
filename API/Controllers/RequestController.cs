@@ -18,7 +18,7 @@ namespace API.Controllers
         private readonly IValidator<RequestDTO> _requestValidator = requestValidator;
 
         [HttpPost]
-        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker,Company,User")]
+        [AllowAnonymous]
         public async Task<ActionResult<RequestShowDTO>> Create([FromBody] RequestDTO dto)
         {
             var validationResult = await _requestValidator.ValidateAsync(dto);

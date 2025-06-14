@@ -96,6 +96,8 @@ namespace API.Extentions
             }
         }
 
+
+
         public static IServiceCollection AddAuthenticationAndAuthorization(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddIdentity<User, IdentityRole>(op =>
@@ -153,6 +155,13 @@ namespace API.Extentions
         public static IServiceCollection AddContext(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddDbContext<AppDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("Default")).UseLazyLoadingProxies());
+            return services;
+        }
+
+        public static IServiceCollection AddSMSService(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.Configure<TwilioOptions>(configuration.GetSection("Twilio"));
+            services.AddScoped<ISMSService, TwilioService>();
             return services;
         }
 
