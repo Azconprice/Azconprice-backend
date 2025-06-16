@@ -175,6 +175,7 @@ namespace API.Extentions
             services.AddScoped<IAppLogRepository, AppLogRepository>();
             services.AddScoped<IRequestRepository, RequestRepository>();
             services.AddScoped<ISalesCategoryRepository, SalesCategoryRepository>();
+            services.AddScoped<IExcelFileRecordRepository, ExcelFileRecordRepository>();
             return services;
         }
 
@@ -201,6 +202,7 @@ namespace API.Extentions
             services.AddScoped<ICompanyService, CompanyService>();
             services.AddScoped<IMailService, MailService>();
             services.AddAutoMapper(typeof(MappingProfile));
+            services.AddScoped<IExcelFileService, ExcelFileService>();
             return services;
         }
 
@@ -212,6 +214,8 @@ namespace API.Extentions
                 ApiKey = Environment.GetEnvironmentVariable("Supabase__ApiKey")!,
                 BucketName = Environment.GetEnvironmentVariable("Supabase__BucketName")!
             };
+
+            services.AddSingleton(supabaseSettings);
 
             services.AddSingleton<Client>(sp =>
             {

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Application.Models.DTOs;
+using Microsoft.AspNetCore.Http;
 
 namespace Application.Services
 {
@@ -6,6 +7,7 @@ namespace Application.Services
     {
         Task<string> UploadAsync(IFormFile file);
         Task<string> UploadAsync(IFormFile file,string fileName);
+        Task<string> UploadExcelAsync(IFormFile file, string firstName, string lastName, string email, string userId);
         Task<string> GetSignedUrlAsync(string path, int expiresInSeconds = 3600);
     }
 }

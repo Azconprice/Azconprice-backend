@@ -1,5 +1,6 @@
 ﻿using Application.Models.DTOs;
 using Application.Models.DTOs.Company;
+using Application.Models.DTOs.Excel;
 using Application.Models.DTOs.Profession;
 using Application.Models.DTOs.SalesCategory;
 using Application.Models.DTOs.Specialization;
@@ -38,5 +39,8 @@ public class MappingProfile : Profile
         // For nested DTOs (if used in your DTOs)
         CreateMap<Profession, ProfessionInsideSpecializationDTO>();
         CreateMap<Specialization, SpecializationInsideProfessionDTO>();
+        CreateMap<ExcelFileRecord, ExcelFileDTO>()
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
+            .ForMember(dest => dest.Url, opt => opt.Ignore());
     }
 }

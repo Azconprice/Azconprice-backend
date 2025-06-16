@@ -95,12 +95,12 @@ namespace Infrastructure.Services
             };
         }
 
-        public async Task<bool> UpdateUserAsync(string id, UserUpdateDTO model, Func<string, string, string> generateConfirmationUrl)
+        public async Task<UserShowDTO?> UpdateUserAsync(string id, UserUpdateDTO model, Func<string, string, string> generateConfirmationUrl)
         {
             // Update related User entity
             var user = await _userManager.FindByIdAsync(id);
-            if (user == null)
-                return false;
+            if (user is null)
+                return null;
 
             bool emailChanged = false;
 
@@ -146,7 +146,7 @@ namespace Infrastructure.Services
             }
 
             await _userManager.UpdateAsync(user);
-            return true;
+            return _mapper.Map<UserShowDTO>(user);
         }
     }
 }

@@ -10,11 +10,11 @@ namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UserController(IClientService service, IValidator<UserUpdateDTO> validator) : Controller
+    public class UserController(IClientService service, IValidator<UserUpdateDTO> validator, IAppLogger appLogger) : Controller
     {
         private readonly IClientService _service = service;
         private readonly IValidator<UserUpdateDTO> _validator = validator;
-
+        private readonly IAppLogger _appLogger = appLogger;
 
         [HttpGet("list")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
@@ -74,8 +74,16 @@ namespace API.Controllers
             try
             {
                 var updated = await _service.UpdateUserAsync(userId, updateDto, (email, token) => Url.Action("ConfirmEmail", "Auth", new { email, token }, Request.Scheme) ?? string.Empty);
-                if (!updated)
+                if (updated is null)
                     return NotFound("User profile not found.");
+
+                await _appLogger.LogAsync(
+                  action: "User Profile Update",
+                  relatedEntityId: updated.Id.ToString(),
+                  userId: updated.Id,
+                  userName: $"{updated.FirstName} {updated.LastName}",
+                  details: $"Worker {updated.FirstName} {updated.LastName} updated profile with ID: {updated.Id}"
+                );
 
                 return Ok(new { Message = "Profile updated successfully." });
             }
@@ -103,8 +111,17 @@ namespace API.Controllers
             try
             {
                 var updated = await _service.UpdateUserAsync(id, updateDto, (email, token) => Url.Action("ConfirmEmail", "Auth", new { email, token }, Request.Scheme) ?? string.Empty);
-                if (!updated)
-                    return NotFound("Worker profile not found.");
+                if (updated is null)
+                    return NotFound("User profile not found.");
+
+                await _appLogger.LogAsync(
+                   action: "User Profile Update",
+                   relatedEntityId: User.FindFirst("userId")?.Value,
+                   userId: User.FindFirst("userId")?.Value,
+                   userName: $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value}",
+                   details: $"Admin {User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} updated profile with ID: {updated.Id}"
+               );
+
 
                 return Ok(new { Message = "Profile updated successfully." });
             }
@@ -122,6 +139,14 @@ namespace API.Controllers
             if (!deleted)
                 return NotFound("User profile not found.");
 
+            await _appLogger.LogAsync(
+                   action: "User Profile Delete",
+                   relatedEntityId: User.FindFirst("userId")?.Value,
+                   userId: User.FindFirst("userId")?.Value,
+                   userName: $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value}",
+                   details: $"Admin {User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} deleted profile with ID: {User.FindFirst("userId")?.Value}"
+            );
+
             return Ok(new { Message = "Profile deleted successfully." });
         }
 
@@ -136,6 +161,14 @@ namespace API.Controllers
             var deleted = await _service.DeleteUserAsync(userId);
             if (!deleted)
                 return NotFound("User profile not found.");
+
+            await _appLogger.LogAsync(
+                  action: "User Profile Delete",
+                  relatedEntityId: User.FindFirst("userId")?.Value,
+                  userId: User.FindFirst("userId")?.Value,
+                  userName: $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value}",
+                  details: $"Worker {User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} deleted profile with ID: {User.FindFirst("userId")?.Value}"
+           );
 
             return Ok(new { Message = "Profile deleted successfully." });
         }

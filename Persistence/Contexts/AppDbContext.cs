@@ -57,5 +57,6 @@ namespace Persistence.Contexts
         public DbSet<WorkerProfile> WorkerProfiles { get; set; }
         public DbSet<CompanyProfile> CompanyProfiles { get; set; }
         public DbSet<AppLog> AppLogs { get; set; }
+        public DbSet<ExcelFileRecord> ExcelFileRecords { get; set; }
     }
 }

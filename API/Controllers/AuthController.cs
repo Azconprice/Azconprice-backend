@@ -228,7 +228,6 @@ namespace API.Controllers
         }
 
         [HttpPost("register/worker")]
-        [RequestSizeLimit(50_000_000)] // 50 MB
         public async Task<IActionResult> RegisterWorker([FromForm] RegisterWorkerRequest request)
         {
             try
