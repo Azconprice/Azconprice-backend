@@ -32,7 +32,7 @@ builder.Host.UseSerilog((context, configuration) => configuration.ReadFrom.Confi
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.Limits.MaxRequestBodySize = 50_000_000;
-    serverOptions.ListenAnyIP(80);
+    //serverOptions.ListenAnyIP(80);
 });
 
 var app = builder.Build();

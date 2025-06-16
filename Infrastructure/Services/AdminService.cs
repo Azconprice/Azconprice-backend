@@ -6,14 +6,21 @@ using Application.Repositories;
 using Application.Services;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services
 {
-    public class AdminService(UserManager<User> userManager, ICompanyProfileRepository companyProfileRepository,IAppLogRepository logRepository) : IAdminService
+    public class AdminService(UserManager<User> userManager, 
+        ICompanyProfileRepository companyProfileRepository, 
+        IAppLogRepository logRepository,
+        IExcelFileRecordRepository excelFileRecordRepository,
+        IRequestRepository requestRepository) : IAdminService
     {
         private readonly UserManager<User> _userManager = userManager;
         private readonly ICompanyProfileRepository _companyProfileRepository = companyProfileRepository;
         private readonly IAppLogRepository _logRepository = logRepository;
+        private readonly IExcelFileRecordRepository _excelFileRecordRepository = excelFileRecordRepository;
+        private readonly IRequestRepository _requestRepository = requestRepository;
 
         public async Task<bool> AddNewAdmin(AddAdminDTO model)
         {
@@ -56,9 +63,33 @@ namespace Infrastructure.Services
             return true;
         }
 
-        // Fix for CS1061: 'IAppLogRepository' does not contain a definition for 'Query'.
-        // The error indicates that the 'Query' method is not defined in the IAppLogRepository interface.
-        // Based on the IRepository<T> interface provided, we can use GetWhere or GetAll methods to retrieve logs.
+        public async Task<DashboardStatistics> GetDashboardStatisticsAsync(DateIntervalRequest dateInterval)
+        {
+            var start = DateTime.SpecifyKind(dateInterval.StartDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var end = DateTime.SpecifyKind(dateInterval.EndDate.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
+
+            var userCount = await _userManager.Users
+                .Where(u => u.CreatedTime >= start && u.CreatedTime <= end)
+                .CountAsync();
+
+            var excelFilesCount = await _excelFileRecordRepository
+                .Query()
+                .Where(f => f.UploadedAt >= start && f.UploadedAt <= end)
+                .CountAsync();
+
+            var requestsCount = await _requestRepository
+                .Query()
+                .Where(r => r.CreatedTime >= start && r.CreatedTime <= end)
+                .CountAsync();
+
+            return new DashboardStatistics
+            {
+                UserCount = userCount,
+                UploadedFilesCount = excelFilesCount,
+                RequestsCount = requestsCount,
+                TotalMoneyAmount = 0
+            };
+        }
 
         public async Task<PaginatedResult<LogListItemDTO>> GetLogsAsync(PaginationRequest request)
         {

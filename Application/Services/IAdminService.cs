@@ -9,5 +9,6 @@ namespace Application.Services
         Task<bool> AddNewAdmin(AddAdminDTO model);
         Task<bool> ChangeCompanyStatus(string id);
         Task<PaginatedResult<LogListItemDTO>> GetLogsAsync(PaginationRequest request);
+        Task<DashboardStatistics> GetDashboardStatisticsAsync(DateIntervalRequest dateInterval);
     }
 }

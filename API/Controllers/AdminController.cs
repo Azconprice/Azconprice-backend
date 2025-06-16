@@ -95,5 +95,31 @@ namespace API.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+
+        [HttpGet("statistics")]
+        public async Task<ActionResult<PaginatedResult<LogListItemDTO>>> GetStatistics([FromQuery] string startDate, [FromQuery] string endDate)
+        {
+            try
+            {
+                if (!DateOnly.TryParse(startDate, out var start))
+                    return BadRequest("Invalid startDate format. Use yyyy-MM-dd.");
+
+                if (!DateOnly.TryParse(endDate, out var end))
+                    return BadRequest("Invalid endDate format. Use yyyy-MM-dd.");
+
+                var dateInterval = new DateIntervalRequest
+                {
+                    StartDate = start,
+                    EndDate = end
+                };
+                var statistics = await _service.GetDashboardStatisticsAsync(dateInterval);
+                
+                return Ok(statistics);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
     }
 }
