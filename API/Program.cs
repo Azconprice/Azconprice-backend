@@ -16,7 +16,7 @@ builder.Services.AddDomainServices(builder.Configuration);
 builder.Services.AddAuthenticationAndAuthorization(builder.Configuration);
 builder.Services.AddValidators();
 builder.Services.AddSupabaseStorage(builder.Configuration);
-builder.Services.AddSMSService(builder.Configuration);
+builder.Services.AddQuickSMSService(builder.Configuration);
 
 builder.Services.AddCors(options =>
 {

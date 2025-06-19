@@ -101,7 +101,7 @@ namespace Infrastructure.Services
             }
 
             if (!string.IsNullOrEmpty(model.PhoneNumber))
-                user.PhoneNumber = model.PhoneNumber;
+                user.PhoneNumber = model.PhoneNumber.Replace(" ", "").Replace("-", "");
 
             await _userManager.UpdateAsync(user);
 

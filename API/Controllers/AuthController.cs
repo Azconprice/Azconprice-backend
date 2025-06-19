@@ -1,4 +1,5 @@
-﻿using Application.Models.DTOs;
+﻿using Amazon.Runtime.Internal.Endpoints.StandardLibrary;
+using Application.Models.DTOs;
 using Application.Models.DTOs.Company;
 using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
@@ -11,6 +12,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using Twilio.TwiML.Messaging;
 
 namespace API.Controllers
 {
@@ -70,7 +76,7 @@ namespace API.Controllers
             };
         }
 
-        [HttpPost("send-phone-verification")]
+        [HttpPost("otp-create")]
         public async Task<IActionResult> SendPhoneVerification([FromBody] SendPhoneVerificationRequest request)
         {
             var validationResult = await _sendPhoneVerificationRequestValidator.ValidateAsync(request);
@@ -83,51 +89,34 @@ namespace API.Controllers
 
                 return BadRequest(new { Errors = errors });
             }
-
-            var status = await _smsService.SendVerificationCodeAsync(request.PhoneNumber);
-
-            return status switch
+            try
             {
-                "pending" => Ok("Verification code sent."),
-                "canceled" => StatusCode(400, "Verification was canceled. Please check the phone number."),
-                "failed" => StatusCode(500, "Failed to send verification code. Please try again later."),
-                _ => StatusCode(500, $"Unexpected status: {status}")
-            };
+                var status = await _smsService.SendVerificationCodeAsync(request.PhoneNumber);
+                return Ok(status);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
         }
 
-        [HttpPost("verify-phone")]
+        [HttpPost("otp-verify")]
         public async Task<IActionResult> VerifyPhone([FromBody] VerifyPhoneRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.PhoneNumber) || string.IsNullOrWhiteSpace(request.Code))
                 return BadRequest("Phone number and code are required.");
 
-            var status = await _smsService.VerifyCodeAsync(request.PhoneNumber, request.Code);
+            try
+            {
+                var status = await _smsService.VerifyCodeAsync(request.PhoneNumber, request.Code);
+                return Ok(status);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
 
-            if (status == "approved")
-            {
-                var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
-                if (user is not null)
-                {
-                    if (!user.PhoneNumberConfirmed)
-                    {
-                        user.PhoneNumberConfirmed = true;
-                        await _userManager.UpdateAsync(user);
-                    }
-                }
-                return Ok("Phone number verified successfully.");
-            }
-            else if (status == "pending")
-            {
-                return BadRequest("Verification code is pending or incorrect.");
-            }
-            else if (status == "canceled")
-            {
-                return BadRequest("Verification was canceled. Please request a new code.");
-            }
-            else
-            {
-                return StatusCode(500, $"Unexpected status: {status}");
-            }
+
         }
 
         [HttpPost("register/user")]
@@ -149,7 +138,6 @@ namespace API.Controllers
             {
                 var fileName = Guid.NewGuid() + Path.GetExtension(request.ProfilePicture.FileName);
 
-                // 🔍 Wrap Cloudflare upload in try-catch
                 try
                 {
                     profilePictureUrl = await _bucketService.UploadAsync(request.ProfilePicture);
@@ -163,7 +151,11 @@ namespace API.Controllers
 
             var existingUser = await _userManager.FindByEmailAsync(request.Email);
             if (existingUser is not null)
-                return Conflict("User already exists");
+                return Conflict("User with this email already exists");
+
+            existingUser = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber.Replace(" ", "").Replace("-", ""));
+            if (existingUser is not null)
+                return Conflict("User with this phone number already exists");
 
             var user = new User
             {
@@ -173,7 +165,7 @@ namespace API.Controllers
                 Email = request.Email,
                 RefreshToken = Guid.NewGuid().ToString("N").ToLower(),
                 ProfilePicture = profilePictureUrl,
-                PhoneNumber = request.PhoneNumber
+                PhoneNumber = request.PhoneNumber.Replace(" ", "").Replace("-", "")
             };
             var result = await _userManager.CreateAsync(user, request.Password);
 
@@ -247,12 +239,19 @@ namespace API.Controllers
                         return BadRequest(new { Error = "One or more specialization IDs are invalid." });
                 }
 
+                var existingUser = await _userManager.FindByEmailAsync(request.Email);
+                if (existingUser is not null)
+                    return Conflict("User with this email already exists");
+
+                existingUser = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber.Replace(" ", "").Replace("-", ""));
+                if (existingUser is not null)
+                    return Conflict("User with this phone number already exists");
+
                 string? profilePictureUrl = null;
                 if (request.ProfilePicture != null)
                 {
                     var fileName = Guid.NewGuid() + Path.GetExtension(request.ProfilePicture.FileName);
 
-                    // 🔍 Wrap Cloudflare upload in try-catch
                     try
                     {
                         profilePictureUrl = await _bucketService.UploadAsync(request.ProfilePicture);
@@ -264,10 +263,6 @@ namespace API.Controllers
                     }
                 }
 
-                var existingUser = await _userManager.FindByEmailAsync(request.Email);
-                if (existingUser is not null)
-                    return Conflict("User already exists");
-
                 var user = new User
                 {
                     FirstName = request.FirstName,
@@ -277,7 +272,7 @@ namespace API.Controllers
                     Email = request.Email,
                     RefreshToken = Guid.NewGuid().ToString("N").ToLower(),
                     ProfilePicture = profilePictureUrl,
-                    PhoneNumber = request.PhoneNumber
+                    PhoneNumber = request.PhoneNumber.Replace(" ", "").Replace("-", "")
                 };
 
                 var result = await _userManager.CreateAsync(user, request.Password);
@@ -302,8 +297,8 @@ namespace API.Controllers
                 action: "Worker Registered",
                 relatedEntityId: user.Id,
                 userId: user.Id,
-                userName: $"{user.FirstName} {user.LastName}",
-                details: $"User registered with email {user.Email}"
+                userName: $"{user.UserName}",
+                details: $"Worker registered with email {user.Email}"
                 );
 
                 return Ok();
@@ -334,6 +329,14 @@ namespace API.Controllers
                 return BadRequest(new { Error = "Invalid sales category ID." });
             }
 
+            var existingUser = await _userManager.FindByEmailAsync(request.Email);
+            if (existingUser is not null)
+                return Conflict("Company with this email already exists");
+
+            existingUser = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber.Replace(" ", "").Replace("-", ""));
+            if (existingUser is not null)
+                return Conflict("Company with this phone number already exists");
+
             string? logo = null;
             if (request.Logo != null)
             {
@@ -351,20 +354,17 @@ namespace API.Controllers
                 }
             }
 
-            var existingUser = await _userManager.FindByEmailAsync(request.Email);
-            if (existingUser is not null)
-                return Conflict("User already exists");
-
             var user = new User
             {
                 FirstName = request.CompanyName,
                 LastName = request.CompanyName,
-                UserName = request.Email,
+                UserName = request.CompanyName,
                 Address = request.Address,
                 Email = request.Email,
                 RefreshToken = Guid.NewGuid().ToString("N").ToLower(),
-                PhoneNumber = request.PhoneNumber
+                PhoneNumber = request.PhoneNumber.Replace(" ", "").Replace("-", "")
             };
+
             var result = await _userManager.CreateAsync(user, request.Password);
 
             if (!result.Succeeded)
@@ -388,7 +388,7 @@ namespace API.Controllers
                 action: "Company Registered",
                 relatedEntityId: user.Id,
                 userId: user.Id,
-                userName: $"{user.FirstName} {user.LastName}",
+                userName: $"{user.UserName}",
                 details: $"User registered with email {user.Email}"
                 );
 
@@ -403,7 +403,7 @@ namespace API.Controllers
             {
                 return BadRequest();
             }
-            if (await _userManager.IsEmailConfirmedAsync(user))
+            if (await _userManager.IsEmailConfirmedAsync(user) || user.PhoneNumberConfirmed)
             {
                 var canSignIn = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
 
@@ -414,7 +414,7 @@ namespace API.Controllers
                     action: "Logged In",
                     relatedEntityId: user.Id,
                     userId: user.Id,
-                    userName: $"{user.FirstName} {user.LastName}",
+                    userName: $"{user.UserName}",
                     details: $"Logged in with email {user.Email}"
                 );
 

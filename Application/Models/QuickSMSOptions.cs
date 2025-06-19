@@ -1,0 +1,16 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Application.Models
+{
+    public class QuickSMSOptions
+    {
+        public string Username { get; set; }
+        public string Password { get; set; }
+        public string PostUrl { get; set; }
+        public string Sender { get; set; }
+    }
+}

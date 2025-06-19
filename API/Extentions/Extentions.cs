@@ -153,16 +153,17 @@ namespace API.Extentions
             return services;
         }
 
-        public static IServiceCollection AddSMSService(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddQuickSMSService(this IServiceCollection services, IConfiguration configuration)
         {
-            var twilioOptions = new TwilioOptions
+            var quickSMSOptions = new QuickSMSOptions
             {
-                AccountSid = Environment.GetEnvironmentVariable("Twilio__AccountSid")!,
-                AuthToken = Environment.GetEnvironmentVariable("Twilio__AuthToken")!,
-                VerifyServiceSid = Environment.GetEnvironmentVariable("Twilio__VerifyServiceSid")!
+                Username = Environment.GetEnvironmentVariable("QuickSMS__Username")!,
+                Password = Environment.GetEnvironmentVariable("QuickSMS__Password")!,
+                Sender = Environment.GetEnvironmentVariable("QuickSMS__Sender")!,
+                PostUrl = Environment.GetEnvironmentVariable("QuickSMS__PostUrl")!
             };
-            services.AddSingleton(twilioOptions);
-            services.AddScoped<ISMSService, TwilioService>();
+            services.AddSingleton(quickSMSOptions);
+            services.AddScoped<ISMSService, QuickSMSService>();
             return services;
         }
 
@@ -176,6 +177,7 @@ namespace API.Extentions
             services.AddScoped<IRequestRepository, RequestRepository>();
             services.AddScoped<ISalesCategoryRepository, SalesCategoryRepository>();
             services.AddScoped<IExcelFileRecordRepository, ExcelFileRecordRepository>();
+            services.AddScoped<IPhoneVerificationRepository,PhoneVerificationRepository>();
             return services;
         }
 

@@ -75,7 +75,7 @@ namespace Infrastructure.Services
                 user.LastName = model.LastName;
 
             if (!string.IsNullOrEmpty(model.PhoneNumber))
-                user.PhoneNumber = model.PhoneNumber;
+                user.PhoneNumber = model.PhoneNumber.Replace(" ", "").Replace("-", "");
 
             if (!string.IsNullOrEmpty(model.Email) && model.Email != user.Email)
             {
@@ -83,18 +83,18 @@ namespace Infrastructure.Services
                 if (existingUser is not null)
                     throw new InvalidOperationException("Worker with this email already exists");
                 user.Email = model.Email;
-                user.UserName = model.Email;
                 emailChanged = true;
             }
+
+            user.UserName = $"{user.FirstName} {user.LastName}";
 
             await _userManager.UpdateAsync(user);
 
             // If email was changed, send confirmation email
             if (emailChanged)
             {
+                user.EmailConfirmed = false; // Reset email confirmation status
                 var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                // You may need to provide a URL generator or pass the confirmation link format here
-                // For now, just send the token (integration with controller or frontend needed for full link)
                 _mailService.SendConfirmationMessage(user.Email, confirmToken);
             }
 

@@ -8,8 +8,8 @@ namespace Application.Models.DTOs.Worker
         public string LastName { get; set; }
         public string Email { get; set; }
         public string Password { get; set; }
-        public string? ConfirmPassword { get; set; }
-        public string? PhoneNumber { get; set; }
+        public string ConfirmPassword { get; set; }
+        public string PhoneNumber { get; set; }
         public IEnumerable<string> Specizalizations { get; set; }
         public bool HaveTaxId { get; set; }
         public string? TaxId { get; set; }

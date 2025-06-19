@@ -111,7 +111,7 @@ namespace Infrastructure.Services
                 user.LastName = model.LastName;
 
             if (!string.IsNullOrEmpty(model.PhoneNumber))
-                user.PhoneNumber = model.PhoneNumber;
+                user.PhoneNumber = model.PhoneNumber.Replace(" ", "").Replace("-", "");
 
             if (!string.IsNullOrEmpty(model.Email) && model.Email != user.Email)
             {
