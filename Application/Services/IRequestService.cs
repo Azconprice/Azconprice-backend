@@ -6,6 +6,7 @@ namespace Application.Services
     public interface IRequestService
     {
         Task<PaginatedResult<RequestShowDTO>> GetAllRequestsAsync(PaginationRequest request);
+        Task<PaginatedResult<RequestShowDTO>> GetUserRequestsAsync(PaginationRequest request, string mail);
         Task<RequestShowDTO?> GetRequestByIdAsync(string requestId);
         Task<RequestShowDTO?> CreateRequestAsync(RequestDTO request);
         Task<bool> DeleteRequestAsync(string requestId);

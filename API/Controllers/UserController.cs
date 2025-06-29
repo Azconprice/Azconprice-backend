@@ -38,7 +38,7 @@ namespace API.Controllers
 
         [HttpGet("profile/me")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "User")]
-        public async Task<ActionResult<WorkerProfileDTO>> GetMyProfile()
+        public async Task<ActionResult<UserShowDTO>> GetMyProfile()
         {
             var userId = User.FindFirst("userId")?.Value;
             if (string.IsNullOrEmpty(userId))

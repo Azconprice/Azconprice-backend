@@ -57,6 +57,26 @@ namespace Infrastructure.Services
             };
         }
 
+        public async Task<PaginatedResult<RequestShowDTO>> GetUserRequestsAsync(PaginationRequest request, string mail)
+        {
+            var query = _repository.Query().OrderByDescending(r => r.CreatedTime);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Where(r => r.Email.Equals(mail, StringComparison.CurrentCultureIgnoreCase))
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
+
+            return new PaginatedResult<RequestShowDTO>
+            {
+                Items = _mapper.Map<IEnumerable<RequestShowDTO>>(items),
+                TotalCount = totalCount,
+                Page = request.Page,
+                PageSize = request.PageSize
+            };
+        }
+
         public async Task<RequestShowDTO?> GetRequestByIdAsync(string requestId)
         {
             var entity = await _repository.GetAsync(requestId);

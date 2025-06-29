@@ -54,6 +54,24 @@ namespace API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("me")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin,User,Company,Worker")]
+        public async Task<ActionResult<PaginatedResult<RequestShowDTO>>> GetByMail([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var mail = User?.Identity?.Name;
+                if (string.IsNullOrEmpty(mail))
+                    return Unauthorized();
+                var result = await _requestService.GetUserRequestsAsync(new PaginationRequest { Page = page, PageSize = pageSize }, mail);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
         [HttpGet("{id}")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         public async Task<ActionResult<RequestShowDTO>> GetById(string id)

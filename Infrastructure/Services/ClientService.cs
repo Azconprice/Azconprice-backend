@@ -114,7 +114,7 @@ namespace Infrastructure.Services
                 user.PhoneNumber = model.PhoneNumber.Replace(" ", "").Replace("-", "");
 
             if (!string.IsNullOrEmpty(model.Address))
-                user.PhoneNumber = model.Address;
+                user.Address = model.Address;
 
             if (!string.IsNullOrEmpty(model.Email) && model.Email != user.Email)
             {
