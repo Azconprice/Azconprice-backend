@@ -9,6 +9,7 @@ namespace Application.Services
     public interface IMailService
     {
         void SendConfirmationMessage(string email, string url);
+        void SendPasswordResetMessage(string email, string content);
         void SendTaskAcceptanceMessage(string clientEmail, string workerEmail);
         void SendTaskRejectionMessage(string clientEmail);
     }

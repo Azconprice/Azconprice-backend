@@ -1,4 +1,5 @@
-﻿using Application.Models;
+﻿using Amazon.Runtime.Internal.Endpoints.StandardLibrary;
+using Application.Models;
 using Application.Services;
 using System;
 using System.Collections.Generic;
@@ -10,14 +11,9 @@ using System.Threading.Tasks;
 
 namespace Infrastructure.Services
 {
-    public class MailService : IMailService
+    public class MailService(SMTPConfig config) : IMailService
     {
-        private readonly SMTPConfig _config;
-
-        public MailService(SMTPConfig config)
-        {
-            _config = config;
-        }
+        private readonly SMTPConfig _config = config;
 
         public void SendConfirmationMessage(string email, string url)
         {
@@ -69,6 +65,30 @@ namespace Infrastructure.Services
 
 </body>
 </html>"
+            };
+
+            message.From = new MailAddress(_config.Username);
+            message.To.Add(new MailAddress(email));
+
+            smtp.Send(message);
+        }
+
+        public void SendPasswordResetMessage(string email, string content)
+        {
+            using var smtp = new SmtpClient()
+            {
+                Host = _config.Host,
+                Port = _config.Port,
+                EnableSsl = _config.EnableSsl,
+                Credentials = new NetworkCredential(_config.Username, _config.Password)
+            };
+
+            using var message = new MailMessage()
+            {
+
+                IsBodyHtml = false,
+                Subject = "IUsta Password reset",
+                Body = content
             };
 
             message.From = new MailAddress(_config.Username);

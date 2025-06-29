@@ -9,7 +9,7 @@ namespace Application.Models.DTOs.Worker
         public string? LastName { get; set; }
         public string? PhoneNumber { get; set; }
         public string? Email { get; set; }
-        public IEnumerable<string> Specizalizations { get; set; }
+        public IEnumerable<string>? Specizalizations { get; set; }
 
         // WorkerProfile fields
         public bool? HaveTaxId { get; set; }

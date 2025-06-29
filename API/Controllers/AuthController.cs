@@ -6,11 +6,13 @@ using Application.Models.DTOs.Worker;
 using Application.Repositories;
 using Application.Services;
 using Domain.Entities;
+using Domain.Enums;
 using FluentValidation;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Persistence.Repositories;
 using Serilog;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -38,7 +40,8 @@ namespace API.Controllers
         IAppLogger appLogger,
         ICompanyService companyService,
         ISMSService smsService,
-        IValidator<SendPhoneVerificationRequest> sendPhoneVerificationRequestValidator) : ControllerBase
+        IValidator<SendPhoneVerificationRequest> sendPhoneVerificationRequestValidator,
+        IOtpVerificationRepository otpVerificationRepository) : ControllerBase
     {
         private readonly UserManager<User> _userManager = userManager;
         private readonly SignInManager<User> _signInManager = signInManager;
@@ -56,6 +59,7 @@ namespace API.Controllers
         private readonly IAppLogger _appLogger = appLogger;
         private readonly ICompanyService _companyService = companyService;
         private readonly ISMSService _smsService = smsService;
+        private readonly IOtpVerificationRepository _otpVerificationRepository = otpVerificationRepository;
 
         private async Task<AuthTokenDTO> GenerateToken(User user)
         {
@@ -394,6 +398,103 @@ namespace API.Controllers
 
             return Ok();
         }
+
+        [HttpPost("reset-password/request-otp")]
+        public async Task<IActionResult> RequestPasswordResetOtp([FromBody] PasswordResetRequestDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Contact) || string.IsNullOrWhiteSpace(dto.ContactType))
+                return BadRequest("Invalid request.");
+
+            if (!Enum.TryParse<ContactType>(dto.ContactType, true, out var contactType) ||
+                (contactType != ContactType.Email && contactType != ContactType.Phone))
+                return BadRequest("Invalid contact type.");
+
+            User? user = contactType == ContactType.Email
+                ? await _userManager.FindByEmailAsync(dto.Contact)
+                : await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == dto.Contact);
+
+            if (user is null)
+                return BadRequest("User not found.");
+
+            var otp = new Random().Next(100000, 999999).ToString();
+            var otpVerification = new OtpVerification
+            {
+                Contact = dto.Contact,
+                ContactType = contactType,
+                Code = otp,
+                ExpirationDate = DateTime.UtcNow.AddMinutes(10),
+                IsVerified = false
+            };
+            await _otpVerificationRepository.AddAsync(otpVerification);
+            await _otpVerificationRepository.SaveChangesAsync();
+
+            if (contactType == ContactType.Email)
+                _mailService.SendPasswordResetMessage(dto.Contact, $"Your password reset code is: {otp}");
+            else
+                await _smsService.SendVerificationCodeAsync(dto.Contact, otp);
+
+            return Ok("OTP sent.");
+        }
+
+        [HttpPost("reset-password/verify-otp")]
+        public async Task<IActionResult> VerifyPasswordResetOtp([FromBody] PasswordResetVerifyOtpDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Contact) || string.IsNullOrWhiteSpace(dto.ContactType) || string.IsNullOrWhiteSpace(dto.Otp))
+                return BadRequest("Invalid request.");
+
+            if (!Enum.TryParse<ContactType>(dto.ContactType, true, out var contactType) ||
+                (contactType != ContactType.Email && contactType != ContactType.Phone))
+                return BadRequest("Invalid contact type.");
+
+            var otpRecord = await _otpVerificationRepository.GetValidOtpAsync(dto.Contact, contactType, dto.Otp);
+            if (otpRecord is null)
+                return BadRequest("Invalid or expired OTP.");
+
+            otpRecord.IsVerified = true;
+            _otpVerificationRepository.Update(otpRecord);
+            await _otpVerificationRepository.SaveChangesAsync();
+
+            return Ok("OTP verified. You may now reset your password.");
+        }
+
+        [HttpPost("reset-password/confirm")]
+        public async Task<IActionResult> ResetPassword([FromBody] PasswordResetConfirmDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Contact) || string.IsNullOrWhiteSpace(dto.ContactType) || string.IsNullOrWhiteSpace(dto.NewPassword))
+                return BadRequest("Invalid request.");
+
+            if (!Enum.TryParse<ContactType>(dto.ContactType, true, out var contactType) ||
+                (contactType != ContactType.Email && contactType != ContactType.Phone))
+                return BadRequest("Invalid contact type.");
+
+            var otpRecord = await _otpVerificationRepository.GetLatestVerifiedCodeAsync(dto.Contact, contactType);
+            if (otpRecord is null)
+                return BadRequest("OTP verification required.");
+
+            User? user = contactType == ContactType.Email
+                ? await _userManager.FindByEmailAsync(dto.Contact)
+                : await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == dto.Contact);
+
+            if (user is null)
+                return BadRequest("User not found.");
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, dto.NewPassword);
+
+            if (!result.Succeeded)
+                return BadRequest(result.Errors);
+
+            await _appLogger.LogAsync(
+                action: "Password Reset",
+                relatedEntityId: user.Id,
+                userId: user.Id,
+                userName: $"{user.FirstName} {user.LastName}",
+                details: $"Password reset via {(contactType == ContactType.Email ? "email" : "phone")}"
+            );
+
+            return Ok("Password reset successful.");
+        }
+
 
         [HttpPost("login")]
         public async Task<ActionResult<AuthTokenDTO>> Login(LoginRequest request)

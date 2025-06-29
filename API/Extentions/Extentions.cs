@@ -177,7 +177,7 @@ namespace API.Extentions
             services.AddScoped<IRequestRepository, RequestRepository>();
             services.AddScoped<ISalesCategoryRepository, SalesCategoryRepository>();
             services.AddScoped<IExcelFileRecordRepository, ExcelFileRecordRepository>();
-            services.AddScoped<IPhoneVerificationRepository,PhoneVerificationRepository>();
+            services.AddScoped<IOtpVerificationRepository,OtpVerificationRepository>();
             return services;
         }
 

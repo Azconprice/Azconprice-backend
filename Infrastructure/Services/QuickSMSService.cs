@@ -2,6 +2,7 @@
 using Application.Repositories;
 using Application.Services;
 using Domain.Entities;
+using Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
@@ -11,11 +12,11 @@ using Twilio.Types;
 
 namespace Infrastructure.Services
 {
-    public class QuickSMSService(QuickSMSOptions options, IAppLogger appLogger, IPhoneVerificationRepository repository, UserManager<User> userManager) : ISMSService
+    public class QuickSMSService(QuickSMSOptions options, IAppLogger appLogger, IOtpVerificationRepository repository, UserManager<User> userManager) : ISMSService
     {
         private readonly QuickSMSOptions _options = options;
         private readonly IAppLogger _appLogger = appLogger;
-        private readonly IPhoneVerificationRepository _repository = repository;
+        private readonly IOtpVerificationRepository _repository = repository;
         private readonly UserManager<User> _userManager = userManager;
 
         public async Task<string> SendVerificationCodeAsync(string phoneNumber)
@@ -42,12 +43,13 @@ namespace Infrastructure.Services
                 unicode = false
             };
 
-            var verification = new PhoneVerification
+            var verification = new OtpVerification
             {
-                PhoneNumber = phoneNumber,
+                Contact = phoneNumber,
                 Code = code,
                 ExpirationDate = DateTime.UtcNow.AddMinutes(10),
-                IsVerified = false
+                IsVerified = false,
+                ContactType = ContactType.Phone
             };
 
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber) ?? throw new ArgumentException($"User with phone number {phoneNumber} does not exist.");
@@ -120,6 +122,42 @@ namespace Infrastructure.Services
             );
 
             return "Verification successfull";
+        }
+
+        public async Task<string> SendVerificationCodeAsync(string phoneNumber, string code)
+        {
+            HttpClient _httpClient = new();
+            string _url = _options.PostUrl;
+            var message = $"Bu, hesabın təsdiqlənməsi üçün birdəfəlik OTP kodunuzdur: {code}";
+            var formattedPhoneNumber = phoneNumber.Replace("+", "").Replace(" ", "").Replace("-", "");
+
+
+            string passwordMd5 = CalculateMD5Hash(_options.Password);
+            string keyRaw = passwordMd5 + _options.Username + message + formattedPhoneNumber + _options.Sender;
+            string key = CalculateMD5Hash(keyRaw);
+
+            var body = new
+            {
+                login = _options.Username,
+                key,
+                msisdn = formattedPhoneNumber,
+                text = message,
+                sender = _options.Sender,
+                scheduled = "NOW",
+                unicode = false
+            };
+
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber) ?? throw new ArgumentException($"User with phone number {phoneNumber} does not exist.");
+            var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync(_url, content);
+            var result = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                return result;
+            }
+            throw new ArgumentException(result);
         }
     }
 }
