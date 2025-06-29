@@ -113,6 +113,9 @@ namespace Infrastructure.Services
             if (!string.IsNullOrEmpty(model.PhoneNumber))
                 user.PhoneNumber = model.PhoneNumber.Replace(" ", "").Replace("-", "");
 
+            if (!string.IsNullOrEmpty(model.Address))
+                user.PhoneNumber = model.Address;
+
             if (!string.IsNullOrEmpty(model.Email) && model.Email != user.Email)
             {
                 var existingUser = _userManager.FindByEmailAsync(model.Email);
