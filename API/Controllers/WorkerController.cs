@@ -1,6 +1,7 @@
 ﻿using Amazon.Runtime.Internal;
 using Application.Models.DTOs;
 using Application.Models.DTOs.Pagination;
+using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
 using Application.Services;
 using FluentValidation;
@@ -15,12 +16,13 @@ namespace API.Controllers
     [ApiController]
     public class WorkerController(
         IWorkerService service,
-        IValidator<WorkerUpdateProfileDTO> validator,
+        IValidator<WorkerUpdateProfileDTO> updateValidator, IValidator<ChangePasswordDTO> changePasswordValidator,
         IAppLogger appLogger // Inject logger
     ) : ControllerBase
     {
         private readonly IWorkerService _service = service;
-        private readonly IValidator<WorkerUpdateProfileDTO> _validator = validator;
+        private readonly IValidator<WorkerUpdateProfileDTO> _updateValidator = updateValidator;
+        private readonly IValidator<ChangePasswordDTO> _changePasswordValidator = changePasswordValidator;
         private readonly IAppLogger _appLogger = appLogger;
 
         [HttpGet("profile/{id}")]
@@ -57,11 +59,45 @@ namespace API.Controllers
             return NotFound("Worker profile not found.");
         }
 
+        [HttpPut("profile/change-password")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO updateDto)
+        {
+            var validationResult = await _changePasswordValidator.ValidateAsync(updateDto);
+            if (!validationResult.IsValid)
+            {
+                var errors = validationResult.Errors
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                return BadRequest(new { Errors = errors });
+            }
+
+            var userId = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+            try
+            {
+                var result = await _service.ChangeWorkerPasswordAsync(userId, updateDto);
+                await _appLogger.LogAsync(
+                 action: "Worker Password Change",
+                  relatedEntityId: User.FindFirst("userId")?.Value,
+                  userId: User.FindFirst("userId")?.Value,
+                  userName: $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value}",
+                  details: $"Worker {User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} changed password"
+                );
+                return Ok(new { Message = "Password changed successfully." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
         [HttpPatch("profile/me")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker")]
         public async Task<IActionResult> PatchMyProfile([FromForm] WorkerUpdateProfileDTO updateDto)
         {
-            var validationResult = await _validator.ValidateAsync(updateDto);
+            var validationResult = await _updateValidator.ValidateAsync(updateDto);
 
             if (!validationResult.IsValid)
             {
@@ -106,7 +142,7 @@ namespace API.Controllers
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         public async Task<IActionResult> PatchProfile(string id, [FromForm] WorkerUpdateProfileDTO updateDto)
         {
-            var validationResult = await _validator.ValidateAsync(updateDto);
+            var validationResult = await _updateValidator.ValidateAsync(updateDto);
 
             if (!validationResult.IsValid)
             {

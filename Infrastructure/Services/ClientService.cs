@@ -151,5 +151,16 @@ namespace Infrastructure.Services
             await _userManager.UpdateAsync(user);
             return _mapper.Map<UserShowDTO>(user);
         }
+
+        public async Task<bool> ChangePasswordAsync(string id, ChangePasswordDTO model)
+        {
+            var user = await _userManager.FindByIdAsync(id) ?? throw new InvalidOperationException("User not found.");
+
+            if(await _userManager.CheckPasswordAsync(user, model.OldPassword) is not true)
+                throw new InvalidOperationException("Old password is incorrect.");
+
+            await _userManager.ChangePasswordAsync(user, model.OldPassword, model.NewPassword);
+            return true;
+        }
     }
 }

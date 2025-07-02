@@ -182,5 +182,16 @@ namespace Infrastructure.Services
 
             return validCount == guidIds.Count;
         }
+
+        public async Task<bool> ChangeWorkerPasswordAsync(string id, ChangePasswordDTO model)
+        {
+            var user = await _userManager.FindByIdAsync(id) ?? throw new InvalidOperationException("User not found.");
+
+            if (await _userManager.CheckPasswordAsync(user, model.OldPassword) is not true)
+                throw new InvalidOperationException("Old password is incorrect.");
+
+            await _userManager.ChangePasswordAsync(user, model.OldPassword, model.NewPassword);
+            return true;
+        }
     }
 }

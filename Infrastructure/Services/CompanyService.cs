@@ -141,5 +141,15 @@ namespace Infrastructure.Services
 
             return dto;
         }
+        public async Task<bool> ChangeCompanyPasswordAsync(string id, ChangePasswordDTO model)
+        {
+            var user = await _userManager.FindByIdAsync(id) ?? throw new InvalidOperationException("Company not found.");
+
+            if (await _userManager.CheckPasswordAsync(user, model.OldPassword) is not true)
+                throw new InvalidOperationException("Old password is incorrect.");
+
+            await _userManager.ChangePasswordAsync(user, model.OldPassword, model.NewPassword);
+            return true;
+        }
     }
 }

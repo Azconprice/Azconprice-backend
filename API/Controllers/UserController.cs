@@ -1,4 +1,5 @@
-﻿using Application.Models.DTOs.Pagination;
+﻿using Application.Models.DTOs;
+using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
 using Application.Services;
@@ -10,10 +11,11 @@ namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UserController(IClientService service, IValidator<UserUpdateDTO> validator, IAppLogger appLogger) : Controller
+    public class UserController(IClientService service, IValidator<UserUpdateDTO> updateValidator,IValidator<ChangePasswordDTO> changePasswordValidator, IAppLogger appLogger) : Controller
     {
         private readonly IClientService _service = service;
-        private readonly IValidator<UserUpdateDTO> _validator = validator;
+        private readonly IValidator<UserUpdateDTO> _updateValidator = updateValidator;
+        private readonly IValidator<ChangePasswordDTO> _changePasswordValidator = changePasswordValidator;
         private readonly IAppLogger _appLogger = appLogger;
 
         [HttpGet("list")]
@@ -51,12 +53,47 @@ namespace API.Controllers
             return NotFound("User profile not found.");
         }
 
+        [HttpPut("profile/change-password")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "User")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO updateDto)
+        {
+            var validationResult = await _changePasswordValidator.ValidateAsync(updateDto);
+            if (!validationResult.IsValid)
+            {
+                var errors = validationResult.Errors
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                return BadRequest(new { Errors = errors });
+            }
+
+            var userId = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+            try
+            {
+               var result = await _service.ChangePasswordAsync(userId, updateDto);
+                await _appLogger.LogAsync(
+                 action: "User Password Change",
+                  relatedEntityId: User.FindFirst("userId")?.Value,
+                  userId: User.FindFirst("userId")?.Value,
+                  userName: $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value}",
+                  details: $"User {User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} changed password"
+                );
+                return Ok(new { Message = "Password changed successfully." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+
 
         [HttpPatch("profile/me")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "User")]
         public async Task<IActionResult> PatchMyProfile([FromForm] UserUpdateDTO updateDto)
         {
-            var validationResult = await _validator.ValidateAsync(updateDto);
+            var validationResult = await _updateValidator.ValidateAsync(updateDto);
 
             if (!validationResult.IsValid)
             {
@@ -97,7 +134,7 @@ namespace API.Controllers
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         public async Task<IActionResult> PatchProfile(string id, [FromForm] UserUpdateDTO updateDto)
         {
-            var validationResult = await _validator.ValidateAsync(updateDto);
+            var validationResult = await _updateValidator.ValidateAsync(updateDto);
 
             if (!validationResult.IsValid)
             {

@@ -1,11 +1,11 @@
-﻿using Application.Models.DTOs.Company;
+﻿using Application.Models.DTOs;
+using Application.Models.DTOs.Company;
 using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.Worker;
 using Application.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace API.Controllers
 {
@@ -13,11 +13,12 @@ namespace API.Controllers
     [ApiController]
     public class CompanyController(
         ICompanyService companyService,
-        IValidator<UpdateCompanyProfileDTO> validator,
+        IValidator<UpdateCompanyProfileDTO> updateValidator, IValidator<ChangePasswordDTO> changePasswordValidator,
         IAppLogger appLogger) : ControllerBase
     {
         private readonly ICompanyService _companyService = companyService;
-        private readonly IValidator<UpdateCompanyProfileDTO> _validator = validator;
+        private readonly IValidator<UpdateCompanyProfileDTO> _updateValidator = updateValidator;
+        private readonly IValidator<ChangePasswordDTO> _changePasswordValidator = changePasswordValidator;
         private readonly IAppLogger _appLogger = appLogger;
 
         [HttpGet("profile/{id}")]
@@ -54,11 +55,45 @@ namespace API.Controllers
             return NotFound("Company profile not found.");
         }
 
+        [HttpPut("profile/change-password")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Company")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO updateDto)
+        {
+            var validationResult = await _changePasswordValidator.ValidateAsync(updateDto);
+            if (!validationResult.IsValid)
+            {
+                var errors = validationResult.Errors
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                return BadRequest(new { Errors = errors });
+            }
+
+            var userId = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+            try
+            {
+                var result = await _companyService.ChangeCompanyPasswordAsync(userId, updateDto);
+                await _appLogger.LogAsync(
+                 action: "Company Password Change",
+                  relatedEntityId: User.FindFirst("userId")?.Value,
+                  userId: User.FindFirst("userId")?.Value,
+                  userName: $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value}",
+                  details: $"Company {User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} changed password"
+                );
+                return Ok(new { Message = "Password changed successfully." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
         [HttpPatch("profile/me")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Company")]
         public async Task<ActionResult<CompanyProfileDTO>> PatchMyProfile([FromForm] UpdateCompanyProfileDTO updateDto)
         {
-            var validationResult = await _validator.ValidateAsync(updateDto);
+            var validationResult = await _updateValidator.ValidateAsync(updateDto);
 
             if (!validationResult.IsValid)
             {
@@ -103,7 +138,7 @@ namespace API.Controllers
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         public async Task<IActionResult> PatchProfile(string id, [FromForm] UpdateCompanyProfileDTO updateDto)
         {
-            var validationResult = await _validator.ValidateAsync(updateDto);
+            var validationResult = await _updateValidator.ValidateAsync(updateDto);
 
             if (!validationResult.IsValid)
             {
