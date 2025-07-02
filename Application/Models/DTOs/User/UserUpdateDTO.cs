@@ -2,7 +2,7 @@
 
 namespace Application.Models.DTOs.User
 {
-    public class UpdateCompanyProfileDTOUserUpdateDTO
+    public class UserUpdateDTO
     {
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
