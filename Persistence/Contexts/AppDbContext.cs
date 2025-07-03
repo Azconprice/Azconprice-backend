@@ -15,6 +15,9 @@ namespace Persistence.Contexts
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.PhoneNumber);
+
             modelBuilder.Entity<Specialization>()
                 .HasOne(s => s.Profession)
                 .WithMany(c => c.Specializations)
