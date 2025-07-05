@@ -1,5 +1,6 @@
 ﻿using Application.Models.DTOs.Excel;
 using Application.Models.DTOs.Pagination;
+using Application.Models.DTOs.Worker;
 using Application.Repositories;
 using Application.Services;
 using AutoMapper;
@@ -77,6 +78,35 @@ namespace Infrastructure.Services
             dto.Url = await _bucketService.GetSignedUrlAsync(record.FilePath);
 
             return dto;
+        }
+
+        public async Task<PaginatedResult<ExcelFileDTO>> GetExcelFilesByUserAsync(string userId, PaginationRequest request)
+        {
+            var query = _repository.Query()
+                .Where(x => x.UserId == userId)
+                .OrderByDescending(x => x.UploadedAt);
+
+            var totalCount = await query.CountAsync();
+            var files = await query
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync();
+
+            var result = new List<ExcelFileDTO>();
+            foreach (var file in files)
+            {
+                var dto = _mapper.Map<ExcelFileDTO>(file);
+                dto.Url = await _bucketService.GetSignedUrlAsync(file.FilePath);
+                result.Add(dto);
+            }
+
+            return new PaginatedResult<ExcelFileDTO>
+            {
+                Items = result,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

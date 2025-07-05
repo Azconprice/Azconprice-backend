@@ -9,5 +9,6 @@ namespace Application.Services
         Task<PaginatedResult<ExcelFileDTO>> GetExcelFilesAsync(PaginationRequest request);
         Task<int> GetExcelFileCountAsync();
         Task<ExcelFileDTO> UploadExcelAsync(IFormFile file, string firstName, string lastName, string email, string userId);
+        Task<PaginatedResult<ExcelFileDTO>> GetExcelFilesByUserAsync(string userId, PaginationRequest request);
     }
 }

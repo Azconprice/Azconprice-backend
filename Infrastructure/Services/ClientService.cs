@@ -118,7 +118,7 @@ namespace Infrastructure.Services
 
             if (!string.IsNullOrEmpty(model.Email) && model.Email != user.Email)
             {
-                var existingUser = _userManager.FindByEmailAsync(model.Email);
+                var existingUser = await _userManager.FindByEmailAsync(model.Email);
                 if (existingUser is not null)
                     throw new InvalidOperationException("User with this email already exists");
                 user.Email = model.Email;

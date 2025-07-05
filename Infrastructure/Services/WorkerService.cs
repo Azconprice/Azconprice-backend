@@ -17,7 +17,8 @@ namespace Infrastructure.Services
         IBucketService bucketService,
         IMailService mailService,
         ISpecializationRepository specializationsRepository,
-        UserManager<User> userManager) : IWorkerService
+        UserManager<User> userManager,
+        ISMSService sMSService) : IWorkerService
     {
         private readonly IWorkerProfileRepository _workerProfileRepository = workerProfileRepository;
         private readonly IMapper _mapper = mapper;
@@ -25,6 +26,7 @@ namespace Infrastructure.Services
         private readonly IMailService _mailService = mailService;
         private readonly ISpecializationRepository _specializationsRepository = specializationsRepository;
         private readonly UserManager<User> _userManager = userManager;
+        private readonly ISMSService _sMSService = sMSService;
 
         public async Task<bool> DeleteWorkerProfile(string userId)
         {
@@ -75,11 +77,16 @@ namespace Infrastructure.Services
                 user.LastName = model.LastName;
 
             if (!string.IsNullOrEmpty(model.PhoneNumber))
+            {
                 user.PhoneNumber = model.PhoneNumber.Replace(" ", "").Replace("-", "");
+                user.PhoneNumberConfirmed = false;
+                await _userManager.UpdateAsync(user);
+                await _sMSService.SendVerificationCodeAsync(user.PhoneNumber);
+            }
 
             if (!string.IsNullOrEmpty(model.Email) && model.Email != user.Email)
             {
-                var existingUser = _userManager.FindByEmailAsync(model.Email);
+                var existingUser =  await _userManager.FindByEmailAsync(model.Email);
                 if (existingUser is not null)
                     throw new InvalidOperationException("Worker with this email already exists");
                 user.Email = model.Email;
@@ -89,8 +96,7 @@ namespace Infrastructure.Services
             user.UserName = $"{user.FirstName} {user.LastName}";
 
             await _userManager.UpdateAsync(user);
-
-            // If email was changed, send confirmation email
+            
             if (emailChanged)
             {
                 user.EmailConfirmed = false; // Reset email confirmation status
@@ -98,7 +104,6 @@ namespace Infrastructure.Services
                 _mailService.SendConfirmationMessage(user.Email, confirmToken);
             }
 
-            // Specialization validation
             if (model.Specizalizations != null && model.Specizalizations.Any())
             {
                 if (!await AreSpecializationsValid(model.Specizalizations))
