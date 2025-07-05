@@ -1,6 +1,6 @@
 ﻿using Application.Models.DTOs.SalesCategory;
 using Application.Models.DTOs.User;
-using Domain.Entities;
+using Microsoft.AspNetCore.Http;
 
 namespace Application.Models.DTOs.Company
 {

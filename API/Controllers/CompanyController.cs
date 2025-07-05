@@ -1,9 +1,11 @@
 ﻿using Application.Models.DTOs;
 using Application.Models.DTOs.Company;
+using Application.Models.DTOs.Excel;
 using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.Worker;
 using Application.Services;
 using FluentValidation;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,12 +16,14 @@ namespace API.Controllers
     public class CompanyController(
         ICompanyService companyService,
         IValidator<UpdateCompanyProfileDTO> updateValidator, IValidator<ChangePasswordDTO> changePasswordValidator,
-        IAppLogger appLogger) : ControllerBase
+        IAppLogger appLogger,
+        IExcelFileService excelFileService) : ControllerBase
     {
         private readonly ICompanyService _companyService = companyService;
         private readonly IValidator<UpdateCompanyProfileDTO> _updateValidator = updateValidator;
         private readonly IValidator<ChangePasswordDTO> _changePasswordValidator = changePasswordValidator;
         private readonly IAppLogger _appLogger = appLogger;
+        private readonly IExcelFileService _excelFileService = excelFileService;
 
         [HttpGet("profile/{id}")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
@@ -87,6 +91,17 @@ namespace API.Controllers
             {
                 return BadRequest(new { Error = ex.Message });
             }
+        }
+
+        [HttpGet("profile/me/excel")]
+        [Authorize(Roles = "Company")]
+        public async Task<ActionResult<PaginatedResult<ExcelFileDTO>>> GetMyFiles([FromQuery] PaginationRequest request)
+        {
+            var userId = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("User not found.");
+            var result = await _excelFileService.GetExcelFilesByUserAsync(userId, request);
+            return Ok(result);
         }
 
         [HttpPatch("profile/me")]

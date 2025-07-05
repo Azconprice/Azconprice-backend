@@ -1,5 +1,4 @@
-﻿using Amazon.Runtime.Internal.Endpoints.StandardLibrary;
-using Application.Models.DTOs;
+﻿using Application.Models.DTOs;
 using Application.Models.DTOs.Company;
 using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
@@ -8,17 +7,9 @@ using Application.Services;
 using Domain.Entities;
 using Domain.Enums;
 using FluentValidation;
-using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Persistence.Repositories;
-using Serilog;
-using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
-using Twilio.TwiML.Messaging;
 
 namespace API.Controllers
 {
@@ -342,7 +333,7 @@ namespace API.Controllers
                 return Conflict("Company with this phone number already exists");
 
             string? logo = null;
-            if (request.Logo != null)
+            if (request.Logo is not null)
             {
                 var fileName = Guid.NewGuid() + Path.GetExtension(request.Logo.FileName);
 
@@ -357,6 +348,25 @@ namespace API.Controllers
                     return StatusCode(500, "Image upload failed.");
                 }
             }
+
+            string tax;
+
+            if (request.TaxId is not null)
+            {
+                var fileName = request.CompanyName + Path.GetExtension(request.TaxId.FileName);
+
+                try
+                {
+                    tax = await _bucketService.UploadTaxIdAsync(request.TaxId, fileName);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Upload failed: {ex.Message}");
+                    return StatusCode(500, "Image upload failed.");
+                }
+            }
+            else
+                return BadRequest("Tax ID file is required.");
 
             var user = new User
             {
@@ -378,7 +388,7 @@ namespace API.Controllers
             {
                 CompanyName = request.CompanyName,
                 UserId = user.Id,
-                TaxId = request.TaxId,
+                TaxId = tax,
                 CompanyLogo = logo,
                 IsConfirmed = false,
                 SalesCategoryId = Guid.Parse(request.SalesCategoryId)

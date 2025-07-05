@@ -1,9 +1,11 @@
 ﻿using Application.Models.DTOs;
+using Application.Models.DTOs.Excel;
 using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
 using Application.Services;
 using FluentValidation;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,12 +13,13 @@ namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UserController(IClientService service, IValidator<UserUpdateDTO> updateValidator,IValidator<ChangePasswordDTO> changePasswordValidator, IAppLogger appLogger) : Controller
+    public class UserController(IClientService service, IValidator<UserUpdateDTO> updateValidator,IValidator<ChangePasswordDTO> changePasswordValidator, IAppLogger appLogger,IExcelFileService excelFileService) : Controller
     {
         private readonly IClientService _service = service;
         private readonly IValidator<UserUpdateDTO> _updateValidator = updateValidator;
         private readonly IValidator<ChangePasswordDTO> _changePasswordValidator = changePasswordValidator;
         private readonly IAppLogger _appLogger = appLogger;
+        private readonly IExcelFileService _excelFileService = excelFileService;
 
         [HttpGet("list")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
@@ -85,6 +88,17 @@ namespace API.Controllers
             {
                 return BadRequest(new { Error = ex.Message });
             }
+        }
+
+        [HttpGet("profile/me/excel")]
+        [Authorize(Roles = "User")]
+        public async Task<ActionResult<PaginatedResult<ExcelFileDTO>>> GetMyFiles([FromQuery] PaginationRequest request)
+        {
+            var userId = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("User not found.");
+            var result = await _excelFileService.GetExcelFilesByUserAsync(userId, request);
+            return Ok(result);
         }
 
 

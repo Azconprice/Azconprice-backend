@@ -68,7 +68,9 @@ namespace Infrastructure.Services
 
             // Map CompanyProfile to WorkerProfileDTO for example purposes
             var dto = _mapper.Map<CompanyProfileDTO>(companyProfile);
+            var url = await _bucketService.GetSignedUrlAsync(companyProfile.TaxId);
 
+            dto.TaxId = url;
             return dto;
         }
 

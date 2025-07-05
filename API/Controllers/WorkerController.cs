@@ -1,10 +1,12 @@
 ﻿using Amazon.Runtime.Internal;
 using Application.Models.DTOs;
+using Application.Models.DTOs.Excel;
 using Application.Models.DTOs.Pagination;
 using Application.Models.DTOs.User;
 using Application.Models.DTOs.Worker;
 using Application.Services;
 using FluentValidation;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -17,13 +19,15 @@ namespace API.Controllers
     public class WorkerController(
         IWorkerService service,
         IValidator<WorkerUpdateProfileDTO> updateValidator, IValidator<ChangePasswordDTO> changePasswordValidator,
-        IAppLogger appLogger // Inject logger
+        IAppLogger appLogger,
+        IExcelFileService excelFileService
     ) : ControllerBase
     {
         private readonly IWorkerService _service = service;
         private readonly IValidator<WorkerUpdateProfileDTO> _updateValidator = updateValidator;
         private readonly IValidator<ChangePasswordDTO> _changePasswordValidator = changePasswordValidator;
         private readonly IAppLogger _appLogger = appLogger;
+        private readonly IExcelFileService _excelFileService = excelFileService;
 
         [HttpGet("profile/{id}")]
         [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker")]
@@ -177,6 +181,18 @@ namespace API.Controllers
             {
                 return BadRequest(new { Error = ex.Message });
             }
+        }
+
+
+        [HttpGet("profile/me/excel")]
+        [Authorize(Roles = "Worker")]
+        public async Task<ActionResult<PaginatedResult<ExcelFileDTO>>> GetMyFiles([FromQuery] PaginationRequest request)
+        {
+            var userId = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("User not found.");
+            var result = await _excelFileService.GetExcelFilesByUserAsync(userId, request);
+            return Ok(result);
         }
 
         [HttpDelete("profile/{id}")]

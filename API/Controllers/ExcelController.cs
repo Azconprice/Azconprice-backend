@@ -36,17 +36,6 @@ namespace API.Controllers
             return Ok(count);
         }
 
-        [HttpGet("me")]
-        [Authorize(Roles = "Admin,Company,User,Worker")]
-        public async Task<ActionResult<PaginatedResult<ExcelFileDTO>>> GetMyFiles([FromQuery] PaginationRequest request)
-        {
-            var userId = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized("User not found.");
-            var result = await _excelFileService.GetExcelFilesByUserAsync(userId, request);
-            return Ok(result);
-        }
-
         [HttpPost("upload")]
         [Authorize(Roles = "Admin,Company,User,Worker")]
         public async Task<ActionResult<ExcelFileDTO>> UploadExcel(ExcelUploadRequest request)
