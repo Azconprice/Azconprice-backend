@@ -30,7 +30,7 @@ namespace API.Controllers
         }
 
         [HttpGet("profile/{id}")]
-        [Authorize(AuthenticationSchemes = "Bearer", Roles = "User")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         public async Task<ActionResult<WorkerProfileDTO>> GetProfile(string id)
         {
             var result = await _service.GetUserByIdAsync(id);

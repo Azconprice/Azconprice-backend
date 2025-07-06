@@ -30,7 +30,7 @@ namespace API.Controllers
         private readonly IExcelFileService _excelFileService = excelFileService;
 
         [HttpGet("profile/{id}")]
-        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Worker")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
         public async Task<ActionResult<WorkerProfileDTO>> GetProfile(string id)
         {
             var result = await _service.GetWorkerProfile(id);
