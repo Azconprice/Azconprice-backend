@@ -130,8 +130,8 @@ namespace API.Controllers
                    action: "Worker Profile Update",
                    relatedEntityId: updated.Id.ToString(),
                    userId: updated.UserId,
-                   userName: $"{updated.FirstName} {updated.LastName}",
-                   details: $"Worker {updated.FirstName} {updated.LastName} updated profile with ID: {updated.Id}"
+                   userName: $"{updated.User.FirstName} {updated.User.LastName}",
+                   details: $"Worker {updated.User.FirstName} {updated.User.LastName} updated profile with ID: {updated.Id}"
                );
 
                 return Ok(updated);
