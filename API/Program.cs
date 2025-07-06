@@ -1,4 +1,5 @@
 using API.Extentions;
+using Application.Models;
 using Serilog;
 DotNetEnv.Env.Load();
 
@@ -17,6 +18,12 @@ builder.Services.AddAuthenticationAndAuthorization(builder.Configuration);
 builder.Services.AddValidators();
 builder.Services.AddSupabaseStorage(builder.Configuration);
 builder.Services.AddQuickSMSService(builder.Configuration);
+var masterFilePath = Path.Combine(builder.Environment.ContentRootPath, "Data", "master.xlsx");
+
+builder.Services.AddSingleton(new MasterFileOptions
+{
+    MasterPath = masterFilePath
+});
 
 builder.Services.AddCors(options =>
 {
@@ -31,7 +38,6 @@ builder.Host.UseSerilog((context, configuration) => configuration.ReadFrom.Confi
 
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.Limits.MaxRequestBodySize = 50_000_000;
     //serverOptions.ListenAnyIP(80);
 });
 

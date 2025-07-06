@@ -37,8 +37,8 @@ namespace API.Controllers
         }
 
         [HttpPost("upload")]
-        [Authorize(Roles = "Admin,Company,User,Worker")]
-        public async Task<ActionResult<ExcelFileDTO>> UploadExcel(ExcelUploadRequest request)
+        [AllowAnonymous]
+        public async Task<IActionResult> UploadExcel(ExcelUploadRequest request)
         {
             // 1. Extract claims
             var userId = User.FindFirst("userId")?.Value;
@@ -47,29 +47,29 @@ namespace API.Controllers
             var lastName = User.FindFirst("lastName")?.Value;
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(email) || request.File is null)
-                return Unauthorized("Missing identity information or file.");
-
             // 2. Validate file type
             if (!request.File.FileName.EndsWith(".xlsx") && !request.File.FileName.EndsWith(".xls"))
                 return BadRequest("Only Excel files are supported.");
 
-            // 3. Adjust names based on role
-            if (role == "Company")
+            if (role is not null && role is "Company")
             {
                 lastName = null;
             }
 
-            await _appLogger.LogAsync(
-                   action: "Uploaded Excel File",
-                   relatedEntityId: User.FindFirst("userId")?.Value,
-                   userId: User.FindFirst("userId")?.Value,
-                   userName: role == "Company" ? $"{User.FindFirst("firstname")?.Value}" : $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value}",
-                   details: role == "Company" ? $"{User.FindFirst("firstname")?.Value} uploaded excel file" : $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} uploaded excel file"
-            );
+            if (request.File == null || request.File.Length == 0)
+                return BadRequest("File is required.");
 
-            var result = await _excelFileService.UploadExcelAsync(request.File, firstName!, lastName ?? "", email!, userId);
-            return Ok(result);
+            var result = await _excelFileService.ProcessQueryExcelAsync(request.File,userId);
+
+            return result; // ✅ Return directly
+
+            //await _appLogger.LogAsync(
+            //       action: "Uploaded Excel File",
+            //       relatedEntityId: User.FindFirst("userId")?.Value,
+            //       userId: User.FindFirst("userId")?.Value,
+            //       userName: role == "Company" ? $"{User.FindFirst("firstname")?.Value}" : $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value}",
+            //       details: role == "Company" ? $"{User.FindFirst("firstname")?.Value} uploaded excel file" : $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} uploaded excel file"
+            //);
         }
     }
 }
