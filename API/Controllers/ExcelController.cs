@@ -59,7 +59,7 @@ namespace API.Controllers
             if (request.File == null || request.File.Length == 0)
                 return BadRequest("File is required.");
 
-            var result = _excelFileService.ProcessQueryExcelAsync(request.File, userId);
+            var result = _excelFileService.ProcessQueryExcelAsync(request.File, userId, request.IsSimple);
 
             return result; // ✅ Return directly
 

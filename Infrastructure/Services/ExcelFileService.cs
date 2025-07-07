@@ -166,7 +166,7 @@ namespace Infrastructure.Services
             };
         }
 
-        public FileContentResult ProcessQueryExcelAsync(IFormFile queryFile, string? userId = null)
+        public FileContentResult ProcessQueryExcelAsync(IFormFile queryFile, string? userId = null, bool isSimple = false)
         {
             if (queryFile == null || queryFile.Length == 0)
                 throw new ArgumentException("Excel file is required.", nameof(queryFile));
@@ -175,7 +175,6 @@ namespace Infrastructure.Services
             const int PRICE_SCORE = 80;
             const double MIN_COVER = 0.50;
 
-            // 1️⃣ LOAD MASTER
             if (!File.Exists(_masterFilePath))
                 throw new FileNotFoundException("Master file not found", _masterFilePath);
 
@@ -209,7 +208,6 @@ namespace Infrastructure.Services
                 .GroupBy(m => new { m.Name, m.Type, m.Unit, m.Price })
                 .Select(g => g.First()).ToList();
 
-            // 2️⃣ LOAD QUERY FILE
             var queries = new List<QueryRow>();
             using (var wbQ = new XLWorkbook(queryFile.OpenReadStream()))
             {
@@ -218,6 +216,7 @@ namespace Infrastructure.Services
                 {
                     var qName = r.Cell(1).GetString();
                     if (string.IsNullOrWhiteSpace(qName)) continue;
+
                     decimal qty = 0;
                     var qtyStr = r.Cell(3).GetString();
                     if (decimal.TryParse(qtyStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var qTmp)) qty = qTmp;
@@ -234,8 +233,8 @@ namespace Infrastructure.Services
                 }
             }
 
-            // 3️⃣ MATCH & CALCULATE
             var results = new List<MatchedResult>();
+            var matchRows = new List<(string Q, string M, int S, decimal? P, string U, string T, string D)>();
 
             foreach (var q in queries)
             {
@@ -265,6 +264,9 @@ namespace Infrastructure.Services
                 var strong = hits.Where(h => h.Score >= PRICE_SCORE && h.Row.Price.HasValue)
                                  .OrderBy(h => h.Row.Price.Value).ToList();
 
+                foreach (var h in strong)
+                    matchRows.Add((q.Name, h.Row.Name, h.Score, h.Row.Price, h.Row.Unit, h.Row.Type, h.Row.Description ?? ""));
+
                 if (!strong.Any())
                 {
                     results.Add(new MatchedResult
@@ -293,40 +295,87 @@ namespace Infrastructure.Services
                 });
             }
 
-            // 4️⃣ BUILD SIMPLE SHEET ONLY
             using var wbOut = new XLWorkbook();
-            var simple = wbOut.Worksheets.Add("Results-Simple");
 
-            simple.Cell(1, 1).SetValue("Mallarin (işlərin və xidmətlərin) adı");
-            simple.Cell(1, 2).SetValue("Ətraflı təsviri");
-            simple.Cell(1, 3).SetValue("Həcmi / Miqdarı");
-            simple.Cell(1, 4).SetValue("Ölçü vahidi");
-            simple.Cell(1, 5).SetValue("Qiymət");
-            simple.Cell(1, 6).SetValue("Cəm (₼)");
-
-            for (int i = 0; i < results.Count; i++)
+            if (isSimple)
             {
-                var r = results[i];
-                var q = queries[i];
-                int row = i + 2;
-                simple.Cell(row, 1).Value = r.QueryName;
-                simple.Cell(row, 2).Value = q.Description ?? "";
-                simple.Cell(row, 3).Value = q.Qty;
-                simple.Cell(row, 4).Value = q.Unit ?? "";
-                simple.Cell(row, 5).Value = r.AveragePrice;
-                simple.Cell(row, 6).Value = r.TotalCost;
+                var simple = wbOut.Worksheets.Add("Results-Simple");
+                simple.Cell(1, 1).SetValue("Mallarin (işlərin və xidmətlərin) adı");
+                simple.Cell(1, 2).SetValue("Ətraflı təsviri");
+                simple.Cell(1, 3).SetValue("Həcmi / Miqdarı");
+                simple.Cell(1, 4).SetValue("Ölçü vahidi");
+                simple.Cell(1, 5).SetValue("Qiymət");
+                simple.Cell(1, 6).SetValue("Cəm (₼)");
+
+                for (int i = 0; i < results.Count; i++)
+                {
+                    var r = results[i];
+                    var q = queries[i];
+                    int row = i + 2;
+                    simple.Cell(row, 1).Value = r.QueryName;
+                    simple.Cell(row, 2).Value = q.Description ?? "";
+                    simple.Cell(row, 3).Value = q.Qty;
+                    simple.Cell(row, 4).Value = q.Unit ?? "";
+                    simple.Cell(row, 5).Value = r.AveragePrice;
+                    simple.Cell(row, 6).Value = r.TotalCost;
+                }
+
+                int footer = results.Count + 2;
+                simple.Cell(footer, 5).Value = "Ümumi Toplam:";
+                simple.Cell(footer, 6).FormulaA1 = $"=SUM(F2:F{results.Count + 1})";
+                simple.Cell(footer, 6).Style.NumberFormat.Format = "#,#0.00";
+                simple.Columns().AdjustToContents();
+            }
+            else
+            {
+                var rs = wbOut.Worksheets.Add("Results");
+                rs.Cell(1, 1).SetValue("Sorğu Adı");
+                rs.Cell(1, 2).SetValue("Miqdar");
+                rs.Cell(1, 3).SetValue("Uyğun Gələn Məhsullar");
+                rs.Cell(1, 4).SetValue("Orta Qiymət (₼)");
+                rs.Cell(1, 5).SetValue("Median Qiymət (₼)");
+                rs.Cell(1, 6).SetValue("Cəm (₼)");
+
+                for (int i = 0; i < results.Count; i++)
+                {
+                    var r = results[i];
+                    rs.Cell(i + 2, 1).Value = r.QueryName;
+                    rs.Cell(i + 2, 2).Value = r.Qty;
+                    rs.Cell(i + 2, 3).Value = string.Join(" | ", matchRows.Where(m => m.Q == r.QueryName).Select(m => $"{m.M} – {m.P:0.##} ₼/{m.U} ({m.S}%)"));
+                    rs.Cell(i + 2, 4).Value = r.AveragePrice;
+                    rs.Cell(i + 2, 5).Value = r.MedianPrice;
+                    rs.Cell(i + 2, 6).Value = r.TotalCost;
+                }
+
+                rs.Cell(results.Count + 3, 5).Value = "Ümumi Toplam:";
+                rs.Cell(results.Count + 3, 6).FormulaA1 = $"=SUM(F2:F{results.Count + 1})";
+                rs.Cell(results.Count + 3, 6).Style.NumberFormat.Format = "#,#0.00";
+
+                var ms = wbOut.Worksheets.Add("Matches");
+                ms.Cell(1, 1).SetValue("Sorğu Adı");
+                ms.Cell(1, 2).SetValue("Uygun Ad");
+                ms.Cell(1, 3).SetValue("Score");
+                ms.Cell(1, 4).SetValue("Qiymət");
+                ms.Cell(1, 5).SetValue("Ölçü vahidi");
+                ms.Cell(1, 6).SetValue("Tip");
+                ms.Cell(1, 7).SetValue("Təsvir");
+
+                for (int i = 0; i < matchRows.Count; i++)
+                {
+                    var (Q, M, S, P, U, T, D) = matchRows[i];
+                    ms.Cell(i + 2, 1).Value = Q;
+                    ms.Cell(i + 2, 2).Value = M;
+                    ms.Cell(i + 2, 3).Value = S;
+                    ms.Cell(i + 2, 4).Value = P;
+                    ms.Cell(i + 2, 5).Value = U;
+                    ms.Cell(i + 2, 6).Value = T;
+                    ms.Cell(i + 2, 7).Value = D;
+                }
             }
 
-            int footer = results.Count + 2;
-            simple.Cell(footer, 5).Value = "Ümumi Toplam:";
-            simple.Cell(footer, 6).FormulaA1 = $"=SUM(F2:F{results.Count + 1})";
-            simple.Cell(footer, 6).Style.NumberFormat.Format = "#,#0.00";
-
-            simple.Columns().AdjustToContents();
-
-            // 5️⃣ RETURN FILE
             using var mem = new MemoryStream();
-            wbOut.SaveAs(mem); mem.Position = 0;
+            wbOut.SaveAs(mem);
+            mem.Position = 0;
 
             return new FileContentResult(mem.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             {
