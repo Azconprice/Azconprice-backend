@@ -35,18 +35,35 @@ namespace Infrastructure.Services
     internal class QueryRow
     {
         public string Name { get; set; } = string.Empty;
+        public string Description { get; set; }
         public decimal Qty { get; set; }
         public string Unit { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
     }
+
+    public class ResultItem
+    {
+        public string QueryName { get; set; }
+        public string Description { get; set; }
+        public double Qty { get; set; }
+        public string Unit { get; set; }
+        public double AveragePrice { get; set; }
+
+        public double TotalCost => Qty * AveragePrice;
+    }
+
     internal class MatchedResult
     {
-        public string QueryName { get; set; } = string.Empty;
+        public string QueryName { get; set; }
         public decimal Qty { get; set; }
-        public string MatchedNames { get; set; } = string.Empty;
+        public string MatchedNames { get; set; }
         public decimal AveragePrice { get; set; }
         public decimal MedianPrice { get; set; }
         public decimal TotalCost { get; set; }
+
+        // NEW ↓
+        public string Description { get; set; } = "";
+        public string Unit { get; set; } = "";
     }
 
     public class ExcelFileService(
@@ -149,16 +166,19 @@ namespace Infrastructure.Services
             };
         }
 
-        public async Task<FileContentResult> ProcessQueryExcelAsync(IFormFile queryFile, string? userId = null)
+        public FileContentResult ProcessQueryExcelAsync(IFormFile queryFile, string? userId = null)
         {
-            if (queryFile == null || queryFile.Length == 0) throw new ArgumentException("Excel file is required.", nameof(queryFile));
+            if (queryFile == null || queryFile.Length == 0)
+                throw new ArgumentException("Excel file is required.", nameof(queryFile));
 
             const int MIN_SCORE = 65;
             const int PRICE_SCORE = 80;
             const double MIN_COVER = 0.50;
 
-            /* 1️⃣  LOAD MASTER */
-            if (!File.Exists(_masterFilePath)) throw new FileNotFoundException("Master file not found", _masterFilePath);
+            // 1️⃣ LOAD MASTER
+            if (!File.Exists(_masterFilePath))
+                throw new FileNotFoundException("Master file not found", _masterFilePath);
+
             var masterRows = new List<ProductRow>();
             var canonIx = new Dictionary<ProductRow, (string canon, HashSet<string> tok)>();
 
@@ -169,6 +189,7 @@ namespace Infrastructure.Services
                 {
                     var name = r.Cell(1).GetString();
                     if (string.IsNullOrWhiteSpace(name)) continue;
+
                     var row = new ProductRow
                     {
                         Name = name,
@@ -183,12 +204,12 @@ namespace Infrastructure.Services
                     canonIx[row] = (canon, AzTextNormalizer.TokenSet(canon));
                 }
             }
-            // Drop exact duplicates like Python .drop_duplicates()
+
             masterRows = masterRows
                 .GroupBy(m => new { m.Name, m.Type, m.Unit, m.Price })
                 .Select(g => g.First()).ToList();
 
-            /* 2️⃣  LOAD QUERY FILE */
+            // 2️⃣ LOAD QUERY FILE
             var queries = new List<QueryRow>();
             using (var wbQ = new XLWorkbook(queryFile.OpenReadStream()))
             {
@@ -205,6 +226,7 @@ namespace Infrastructure.Services
                     queries.Add(new QueryRow
                     {
                         Name = qName,
+                        Description = r.Cell(2).GetString(),
                         Qty = qty,
                         Unit = r.Cell(4).GetString().Trim().ToLowerInvariant(),
                         Type = r.Cell(6).GetString().Trim().ToLowerInvariant()
@@ -212,9 +234,8 @@ namespace Infrastructure.Services
                 }
             }
 
-            /* 3️⃣  MATCH & CALCULATE */
+            // 3️⃣ MATCH & CALCULATE
             var results = new List<MatchedResult>();
-            var matchRows = new List<(string Q, string M, int S, decimal? P, string U, string T, string D)>();
 
             foreach (var q in queries)
             {
@@ -223,10 +244,8 @@ namespace Infrastructure.Services
                 var contQ = qTok.Except(AzTextStaticData.Generic).ToHashSet();
 
                 IEnumerable<ProductRow> candidates = masterRows;
-                // Apply type filter only for specific categories
                 if (q.Type == "product" || q.Type == "service" || q.Type == "mix")
                     candidates = candidates.Where(m => m.Type == q.Type);
-                // Unit filter
                 if (!string.IsNullOrWhiteSpace(q.Unit))
                     candidates = candidates.Where(m => m.Unit == q.Unit);
 
@@ -238,16 +257,13 @@ namespace Infrastructure.Services
 
                     double raw = Fuzz.TokenSetRatio(qCanon, mCanon);
                     if (AzTextStaticData.Critical.Any(c => qTok.Contains(c) ^ mTok.Contains(c))) raw *= 0.70;
-                    int score = (int)raw; // truncate like Python
+                    int score = (int)raw;
                     if (score < MIN_SCORE || AzTextNormalizer.Coverage(qTok, mTok) < MIN_COVER) continue;
                     hits.Add((m, score));
                 }
 
-                // strong hits: score >= 80 and price present
                 var strong = hits.Where(h => h.Score >= PRICE_SCORE && h.Row.Price.HasValue)
                                  .OrderBy(h => h.Row.Price.Value).ToList();
-                foreach (var h in strong)
-                    matchRows.Add((q.Name, h.Row.Name, h.Score, h.Row.Price, h.Row.Unit, h.Row.Type, h.Row.Description ?? ""));
 
                 if (!strong.Any())
                 {
@@ -255,7 +271,6 @@ namespace Infrastructure.Services
                     {
                         QueryName = q.Name,
                         Qty = q.Qty,
-                        MatchedNames = "– no priced matches ≥ 80 –",
                         AveragePrice = 0,
                         MedianPrice = 0,
                         TotalCost = 0
@@ -268,54 +283,55 @@ namespace Infrastructure.Services
                                Math.Round((strong[strong.Count / 2 - 1].Row.Price!.Value + strong[strong.Count / 2].Row.Price!.Value) / 2m, 2);
                 decimal tot = Math.Round(avg * q.Qty, 2);
 
-                string bullet = string.Join(" | ", strong.Select(h => $"{h.Row.Name} – {h.Row.Price:0.##} ₼/{h.Row.Unit} ({h.Score}%)"));
-
                 results.Add(new MatchedResult
                 {
                     QueryName = q.Name,
                     Qty = q.Qty,
-                    MatchedNames = bullet,
                     AveragePrice = avg,
                     MedianPrice = med,
                     TotalCost = tot
                 });
             }
 
-            /* 4️⃣  BUILD EXCEL OUTPUT */
+            // 4️⃣ BUILD SIMPLE SHEET ONLY
             using var wbOut = new XLWorkbook();
-            var rs = wbOut.Worksheets.Add("Results");
-            rs.Cell(1, 1).SetValue("Sorğu Adı"); rs.Cell(1, 2).SetValue("Miqdar"); rs.Cell(1, 3).SetValue("Uyğun Gələn Məhsullar");
-            rs.Cell(1, 4).SetValue("Orta Qiymət (₼)"); rs.Cell(1, 5).SetValue("Median Qiymət (₼)"); rs.Cell(1, 6).SetValue("Cəm (₼)");
+            var simple = wbOut.Worksheets.Add("Results-Simple");
+
+            simple.Cell(1, 1).SetValue("Mallarin (işlərin və xidmətlərin) adı");
+            simple.Cell(1, 2).SetValue("Ətraflı təsviri");
+            simple.Cell(1, 3).SetValue("Həcmi / Miqdarı");
+            simple.Cell(1, 4).SetValue("Ölçü vahidi");
+            simple.Cell(1, 5).SetValue("Qiymət");
+            simple.Cell(1, 6).SetValue("Cəm (₼)");
+
             for (int i = 0; i < results.Count; i++)
             {
-                var r = results[i]; int row = i + 2;
-                rs.Cell(row, 1).Value = r.QueryName;
-                rs.Cell(row, 2).Value = r.Qty;
-                rs.Cell(row, 3).Value = r.MatchedNames;
-                rs.Cell(row, 4).Value = r.AveragePrice;
-                rs.Cell(row, 5).Value = r.MedianPrice;
-                rs.Cell(row, 6).Value = r.TotalCost;
-            }
-            int foot = results.Count + 3;
-            rs.Cell(foot, 5).Value = "Ümumi Toplam:";
-            rs.Cell(foot, 6).FormulaA1 = $"=SUM(F2:F{results.Count + 1})";
-            rs.Cell(foot, 6).Style.NumberFormat.Format = "#,#0.00";
-
-            var ms = wbOut.Worksheets.Add("Matches");
-            ms.Cell(1, 1).SetValue("Sorğu Adı"); ms.Cell(1, 2).SetValue("Uygun Ad"); ms.Cell(1, 3).SetValue("Score");
-            ms.Cell(1, 4).SetValue("Qiymət"); ms.Cell(1, 5).SetValue("Ölçü vahidi"); ms.Cell(1, 6).SetValue("Tip"); ms.Cell(1, 7).SetValue("Təsvir");
-            for (int i = 0; i < matchRows.Count; i++)
-            {
-                var (Q, M, S, P, U, T, D) = matchRows[i]; int row = i + 2;
-                ms.Cell(row, 1).Value = Q; ms.Cell(row, 2).Value = M; ms.Cell(row, 3).Value = S;
-                ms.Cell(row, 4).Value = P; ms.Cell(row, 5).Value = U; ms.Cell(row, 6).Value = T; ms.Cell(row, 7).Value = D;
+                var r = results[i];
+                var q = queries[i];
+                int row = i + 2;
+                simple.Cell(row, 1).Value = r.QueryName;
+                simple.Cell(row, 2).Value = q.Description ?? "";
+                simple.Cell(row, 3).Value = q.Qty;
+                simple.Cell(row, 4).Value = q.Unit ?? "";
+                simple.Cell(row, 5).Value = r.AveragePrice;
+                simple.Cell(row, 6).Value = r.TotalCost;
             }
 
-            /* 5️⃣  RETURN FILE */
-            using var mem = new MemoryStream(); wbOut.SaveAs(mem); mem.Position = 0;
+            int footer = results.Count + 2;
+            simple.Cell(footer, 5).Value = "Ümumi Toplam:";
+            simple.Cell(footer, 6).FormulaA1 = $"=SUM(F2:F{results.Count + 1})";
+            simple.Cell(footer, 6).Style.NumberFormat.Format = "#,#0.00";
+
+            simple.Columns().AdjustToContents();
+
+            // 5️⃣ RETURN FILE
+            using var mem = new MemoryStream();
+            wbOut.SaveAs(mem); mem.Position = 0;
+
             return new FileContentResult(mem.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            { FileDownloadName = "processed_results.xlsx" };
+            {
+                FileDownloadName = "processed_results.xlsx"
+            };
         }
-
     }
 }

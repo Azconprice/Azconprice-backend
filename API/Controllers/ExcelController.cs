@@ -38,7 +38,7 @@ namespace API.Controllers
 
         [HttpPost("upload")]
         [AllowAnonymous]
-        public async Task<IActionResult> UploadExcel(ExcelUploadRequest request)
+        public IActionResult UploadExcel(ExcelUploadRequest request)
         {
             // 1. Extract claims
             var userId = User.FindFirst("userId")?.Value;
@@ -59,7 +59,7 @@ namespace API.Controllers
             if (request.File == null || request.File.Length == 0)
                 return BadRequest("File is required.");
 
-            var result = await _excelFileService.ProcessQueryExcelAsync(request.File,userId);
+            var result = _excelFileService.ProcessQueryExcelAsync(request.File, userId);
 
             return result; // ✅ Return directly
 
