@@ -70,12 +70,14 @@ namespace Infrastructure.Services
         IExcelFileRecordRepository repository,
         IBucketService bucketService,
         IMapper mapper,
-           MasterFileOptions masterFileOptions) : IExcelFileService
+           MasterFileOptions masterFileOptions,
+           INumericExtractor numericExtractor) : IExcelFileService
     {
         private readonly string _masterFilePath = masterFileOptions.MasterPath;
         private readonly IExcelFileRecordRepository _repository = repository;
         private readonly IBucketService _bucketService = bucketService;
         private readonly IMapper _mapper = mapper;
+        private readonly INumericExtractor _numericExtractor = numericExtractor;
 
         public async Task<PaginatedResult<ExcelFileDTO>> GetExcelFilesAsync(PaginationRequest request)
         {
@@ -166,123 +168,119 @@ namespace Infrastructure.Services
             };
         }
 
-        public FileContentResult ProcessQueryExcelAsync(IFormFile queryFile, string? userId = null, bool isSimple = false)
+        public FileContentResult ProcessQueryExcelAsync(
+            IFormFile queryFile,
+            string? userId = null,
+            bool isSimple = false)
         {
+            /* 1. guard + constants */
             if (queryFile == null || queryFile.Length == 0)
                 throw new ArgumentException("Excel file is required.", nameof(queryFile));
 
-            const int MIN_SCORE = 65;
-            const int PRICE_SCORE = 80;
+            const int MIN_SCORE = 65;   // python config.THRESHOLD
+            const int PRICE_SCORE = 82;   // python PRICE_AVG_MIN_SCORE
             const double MIN_COVER = 0.50;
 
             if (!File.Exists(_masterFilePath))
                 throw new FileNotFoundException("Master file not found", _masterFilePath);
 
-            var masterRows = new List<ProductRow>();
-            var canonIx = new Dictionary<ProductRow, (string canon, HashSet<string> tok)>();
+            /* 2. load data */
+            var (master, ix) = LoadMaster(_masterFilePath);
+            var queries = LoadQueries(queryFile);
 
-            using (var wb = new XLWorkbook(_masterFilePath))
-            {
-                var ws = wb.Worksheet(1);
-                foreach (var r in ws.RowsUsed().Skip(1))
-                {
-                    var name = r.Cell(1).GetString();
-                    if (string.IsNullOrWhiteSpace(name)) continue;
-
-                    var row = new ProductRow
-                    {
-                        Name = name,
-                        Description = r.Cell(2).GetString(),
-                        Quantity = r.Cell(3).GetString(),
-                        Unit = r.Cell(4).GetString().Trim().ToLowerInvariant(),
-                        Price = decimal.TryParse(r.Cell(5).GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var p) ? p : null,
-                        Type = r.Cell(6).GetString().Trim().ToLowerInvariant()
-                    };
-                    masterRows.Add(row);
-                    var canon = AzTextNormalizer.Canon(name);
-                    canonIx[row] = (canon, AzTextNormalizer.TokenSet(canon));
-                }
-            }
-
-            masterRows = masterRows
-                .GroupBy(m => new { m.Name, m.Type, m.Unit, m.Price })
-                .Select(g => g.First()).ToList();
-
-            var queries = new List<QueryRow>();
-            using (var wbQ = new XLWorkbook(queryFile.OpenReadStream()))
-            {
-                var ws = wbQ.Worksheet(1);
-                foreach (var r in ws.RowsUsed().Skip(1))
-                {
-                    var qName = r.Cell(1).GetString();
-                    if (string.IsNullOrWhiteSpace(qName)) continue;
-
-                    decimal qty = 0;
-                    var qtyStr = r.Cell(3).GetString();
-                    if (decimal.TryParse(qtyStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var qTmp)) qty = qTmp;
-                    else if (r.Cell(3).TryGetValue(out double qNum)) qty = (decimal)qNum;
-
-                    queries.Add(new QueryRow
-                    {
-                        Name = qName,
-                        Description = r.Cell(2).GetString(),
-                        Qty = qty,
-                        Unit = r.Cell(4).GetString().Trim().ToLowerInvariant(),
-                        Type = r.Cell(6).GetString().Trim().ToLowerInvariant()
-                    });
-                }
-            }
-
+            /* 3. match loop */
             var results = new List<MatchedResult>();
             var matchRows = new List<(string Q, string M, int S, decimal? P, string U, string T, string D)>();
 
             foreach (var q in queries)
             {
-                var qCanon = AzTextNormalizer.Canon(q.Name);
-                var qTok = AzTextNormalizer.TokenSet(qCanon);
-                var contQ = qTok.Except(AzTextStaticData.Generic).ToHashSet();
+                var qCan = AzTextNormalizer.Canon(q.Name);
+                var qTok = AzTextNormalizer.TokenSet(qCan);
+                var qNums = _numericExtractor.Extract(q.Name);
+                bool hasQn = qNums.Count > 0;
 
-                IEnumerable<ProductRow> candidates = masterRows;
-                if (q.Type == "product" || q.Type == "service" || q.Type == "mix")
-                    candidates = candidates.Where(m => m.Type == q.Type);
+                IEnumerable<ProductRow> cand = master;
+                if (q.Type is "product" or "service" or "mix")
+                    cand = cand.Where(m => m.Type == q.Type);
                 if (!string.IsNullOrWhiteSpace(q.Unit))
-                    candidates = candidates.Where(m => m.Unit == q.Unit);
+                    cand = cand.Where(m => m.Unit == q.Unit);
 
                 var hits = new List<(ProductRow Row, int Score)>();
-                foreach (var m in candidates)
-                {
-                    var (mCanon, mTok) = canonIx[m];
-                    if (!contQ.Overlaps(mTok.Except(AzTextStaticData.Generic))) continue;
 
-                    double raw = Fuzz.TokenSetRatio(qCanon, mCanon);
-                    if (AzTextStaticData.Critical.Any(c => qTok.Contains(c) ^ mTok.Contains(c))) raw *= 0.70;
+                foreach (var m in cand)
+                {
+                    var (mCan, mTok) = ix[m];
+
+                    /* token overlap (non-generic) */
+                    if (!qTok.Intersect(mTok.Except(AzTextStaticData.Generic)).Any())
+                        continue;
+
+                    /* coverage gate */
+                    if (AzTextNormalizer.Coverage(qTok, mTok) < MIN_COVER)
+                        continue;
+
+                    /* numeric guard */
+                    double numPenalty = 1.0;
+                    if (hasQn)
+                    {
+                        var mNums = _numericExtractor.Extract(m.Name);
+                        if (mNums.Count == 0)
+                        {
+                            numPenalty = 0.80;
+                        }
+                        else
+                        {
+                            bool exact = qNums.Any(qp =>
+                                           mNums.Any(mp =>
+                                               Math.Abs(mp.Number - qp.Number) < 1e-6 &&
+                                               mp.Unit == qp.Unit));
+                            if (!exact) continue;
+                        }
+                    }
+
+                    /* critical token — MUST match */
+                    bool critMismatch = AzTextStaticData.Critical
+                                        .Any(c => qTok.Contains(c) ^ mTok.Contains(c));
+                    if (critMismatch) continue;
+
+                    /* fuzzy score */
+                    double raw = Fuzz.TokenSetRatio(qCan, mCan) * numPenalty;
                     int score = (int)raw;
-                    if (score < MIN_SCORE || AzTextNormalizer.Coverage(qTok, mTok) < MIN_COVER) continue;
+                    if (score < MIN_SCORE) continue;
+
                     hits.Add((m, score));
                 }
 
+                /* strong hits for price stats */
                 var strong = hits.Where(h => h.Score >= PRICE_SCORE && h.Row.Price.HasValue)
-                                 .OrderBy(h => h.Row.Price.Value).ToList();
+                                 .OrderBy(h => h.Row.Price!.Value)
+                                 .ToList();
 
                 foreach (var h in strong)
-                    matchRows.Add((q.Name, h.Row.Name, h.Score, h.Row.Price, h.Row.Unit, h.Row.Type, h.Row.Description ?? ""));
+                    matchRows.Add((q.Name, h.Row.Name, h.Score,
+                                   h.Row.Price, h.Row.Unit, h.Row.Type, h.Row.Description ?? ""));
 
-                if (!strong.Any())
+                /* collect & clip prices (Tukey 1.5·IQR) */
+                var prices = strong.Select(h => h.Row.Price!.Value).OrderBy(p => p).ToList();
+                if (prices.Count >= 4)
                 {
-                    results.Add(new MatchedResult
-                    {
-                        QueryName = q.Name,
-                        Qty = q.Qty,
-                        AveragePrice = 0,
-                        MedianPrice = 0,
-                        TotalCost = 0
-                    });
-                    continue;
+                    decimal q25 = prices[(int)(0.25 * (prices.Count - 1))];
+                    decimal q75 = prices[(int)(0.75 * (prices.Count - 1))];
+                    var iqr = q75 - q25;
+                    var lo = q25 - 1.5m * iqr;
+                    var hi = q75 + 1.5m * iqr;
+                    prices = prices.Where(p => p >= lo && p <= hi).ToList();
                 }
 
-                decimal avg = Math.Round(strong.Average(h => h.Row.Price!.Value), 2);
-                decimal med = strong.Count % 2 == 1 ? strong[strong.Count / 2].Row.Price!.Value :
-                               Math.Round((strong[strong.Count / 2 - 1].Row.Price!.Value + strong[strong.Count / 2].Row.Price!.Value) / 2m, 2);
+                decimal avg = prices.Count == 0 ? 0 : Math.Round(prices.Average(), 2);
+                decimal med = prices.Count switch
+                {
+                    0 => 0,
+                    1 => prices[0],
+                    _ => prices.Count % 2 == 1
+                           ? prices[prices.Count / 2]
+                           : Math.Round((prices[prices.Count / 2 - 1] + prices[prices.Count / 2]) / 2m, 2)
+                };
                 decimal tot = Math.Round(avg * q.Qty, 2);
 
                 results.Add(new MatchedResult
@@ -295,8 +293,8 @@ namespace Infrastructure.Services
                 });
             }
 
+            /* 4. build workbook (unchanged) */
             using var wbOut = new XLWorkbook();
-
             if (isSimple)
             {
                 var simple = wbOut.Worksheets.Add("Results-Simple");
@@ -382,5 +380,106 @@ namespace Infrastructure.Services
                 FileDownloadName = "processed_results.xlsx"
             };
         }
+
+
+        /*──────────────────────── HELPERS ─────────────────────────────*/
+
+        private static (List<ProductRow>, Dictionary<ProductRow, (string, HashSet<string>)>)
+            LoadMaster(string path)
+        {
+            var list = new List<ProductRow>();
+            var ix = new Dictionary<ProductRow, (string, HashSet<string>)>();
+
+            using var wb = new XLWorkbook(path);
+            var ws = wb.Worksheet(1);
+            var hdr = ws.Row(1).CellsUsed()
+                        .ToDictionary(c => c.GetString().Trim().ToLowerInvariant(),
+                                      c => c.Address.ColumnNumber);
+
+            int colName = hdr["malların (işlərin və xidmətlərin) adı"];
+            int colUnit = hdr["ölçü vahidi"];
+            int colPrice = hdr["qiymət"];
+            int colFlag = hdr["tip"];
+            int colDesc = hdr.TryGetValue("ətraflı təsviri", out var d) ? d : 0;
+
+            foreach (var r in ws.RowsUsed().Skip(1))
+            {
+                var name = r.Cell(colName).GetString();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                var row = new ProductRow
+                {
+                    Name = name,
+                    Description = colDesc == 0 ? "" : r.Cell(colDesc).GetString(),
+                    Unit = r.Cell(colUnit).GetString().Trim().ToLowerInvariant(),
+                    Price = ParsePrice(r.Cell(colPrice)),
+                    Type = r.Cell(colFlag).GetString().Trim().ToLowerInvariant()
+                };
+                list.Add(row);
+
+                var can = AzTextNormalizer.Canon(name);
+                ix[row] = (can, AzTextNormalizer.TokenSet(can));
+            }
+
+            // deduplicate by Name+Unit+Type (price ignored)
+            list = list.GroupBy(m => new { m.Name, m.Type, m.Unit })
+                       .Select(g => g.First())
+                       .ToList();
+
+            return (list, ix);
+        }
+        private static List<QueryRow> LoadQueries(IFormFile file)
+        {
+            using var wb = new XLWorkbook(file.OpenReadStream());
+            var ws = wb.Worksheet(1);
+            var hdr = ws.Row(1).CellsUsed()
+                        .ToDictionary(c => c.GetString().Trim().ToLowerInvariant(),
+                                      c => c.Address.ColumnNumber);
+
+            int colName = hdr["malların (işlərin və xidmətlərin) adı"];
+            int colUnit = hdr.TryGetValue("ölçü vahidi", out var cu) ? cu : 0;
+            int colFlag = hdr.TryGetValue("tip", out var cf) ? cf : 0;
+            int colDesc = hdr.TryGetValue("ətraflı təsviri", out var cd) ? cd : 0;
+            int colQty = hdr.TryGetValue("həcmi / miqdarı", out var cq) ? cq : 0;
+
+            var list = new List<QueryRow>();
+            foreach (var r in ws.RowsUsed().Skip(1))
+            {
+                var name = r.Cell(colName).GetString();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                decimal qty = 0;
+                if (colQty != 0)
+                {
+                    var raw = r.Cell(colQty).GetString().Replace(',', '.');
+                    decimal.TryParse(raw, NumberStyles.Any,
+                        CultureInfo.InvariantCulture, out qty);
+                }
+
+                list.Add(new QueryRow
+                {
+                    Name = name,
+                    Description = colDesc == 0 ? "" : r.Cell(colDesc).GetString(),
+                    Qty = qty,
+                    Unit = colUnit == 0 ? "" : r.Cell(colUnit).GetString().Trim().ToLowerInvariant(),
+                    Type = colFlag == 0 ? "" : r.Cell(colFlag).GetString().Trim().ToLowerInvariant()
+                });
+            }
+            return list;
+        }
+
+        private static decimal? ParsePrice(IXLCell cell)
+        {
+            if (cell.DataType == XLDataType.Number)
+                return (decimal)cell.GetDouble();
+
+            var txt = cell.GetString()
+                        .Replace("\u00A0", "") // nbsp
+                        .Replace(" ", "")      // thin space
+                        .Replace(",", ".");
+            return decimal.TryParse(txt, NumberStyles.Any,
+                CultureInfo.InvariantCulture, out var d) ? d : (decimal?)null;
+        }
+
     }
 }

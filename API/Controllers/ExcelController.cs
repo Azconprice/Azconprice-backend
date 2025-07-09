@@ -14,11 +14,12 @@ namespace API.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class ExcelController(IExcelFileService excelFileService, UserManager<User> userManager, IAppLogger appLogger) : ControllerBase
+    public class ExcelController(IExcelFileService excelFileService, UserManager<User> userManager, IAppLogger appLogger, IExcelMatchService svc) : ControllerBase
     {
         private readonly IExcelFileService _excelFileService = excelFileService;
         private readonly UserManager<User> _userManager = userManager;
         private readonly IAppLogger _appLogger = appLogger;
+        private readonly IExcelMatchService _svc = svc;
 
         [HttpGet("list")]
         [Authorize(Roles = "Admin")]
@@ -71,5 +72,13 @@ namespace API.Controllers
             //       details: role == "Company" ? $"{User.FindFirst("firstname")?.Value} uploaded excel file" : $"{User.FindFirst("firstname")?.Value} {User.FindFirst("lastname")?.Value} uploaded excel file"
             //);
         }
+
+        //[HttpPost("upload")]
+        //[AllowAnonymous]
+        //public async Task<IActionResult> Upload([FromForm] ExcelUploadRequest request)
+        //{
+        //    var (bytes, fileName, ctype) = await _svc.ProcessQueryExcelAsync(request.File);
+        //    return File(bytes, ctype, fileName);
+        //}
     }
 }

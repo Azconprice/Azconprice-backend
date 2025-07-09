@@ -177,7 +177,7 @@ namespace API.Extentions
             services.AddScoped<IRequestRepository, RequestRepository>();
             services.AddScoped<ISalesCategoryRepository, SalesCategoryRepository>();
             services.AddScoped<IExcelFileRecordRepository, ExcelFileRecordRepository>();
-            services.AddScoped<IOtpVerificationRepository,OtpVerificationRepository>();
+            services.AddScoped<IOtpVerificationRepository, OtpVerificationRepository>();
             return services;
         }
 
@@ -206,6 +206,35 @@ namespace API.Extentions
             services.AddAutoMapper(typeof(MappingProfile));
             services.AddScoped<IExcelFileService, ExcelFileService>();
             return services;
+        }
+
+        public static IServiceCollection AddAzconMatching(this IServiceCollection sc,
+                                                          IConfiguration cfg, IWebHostEnvironment env)
+        {
+            var vocab = VocabLoader.Load(
+        Path.Combine(env.ContentRootPath, "Data", "vocab.json"));
+            sc.AddSingleton(vocab);
+
+            var masterPath = cfg["Azcon:MasterPath"];
+            if (string.IsNullOrWhiteSpace(masterPath))
+                masterPath = Path.Combine(env.ContentRootPath, "Data", "master.xlsx");
+            else if (!Path.IsPathRooted(masterPath))
+                masterPath = Path.Combine(env.ContentRootPath, masterPath);
+
+            sc.AddSingleton<IPreprocessingService, PreprocessingService>();
+            sc.AddSingleton<INumericExtractor, NumericExtractor>();
+            sc.AddSingleton<IMatchingService, MatchingService>();
+
+            sc.AddSingleton<IExcelMatchService>(sp =>
+        new ExcelMatchService(
+            sp.GetRequiredService<IPreprocessingService>(),
+            sp.GetRequiredService<INumericExtractor>(),
+            sp.GetRequiredService<IMatchingService>(),
+            vocab,
+            masterPath,  // pass relative path
+            cfg));                    // pass resolved absolute path
+
+            return sc;
         }
 
         public static IServiceCollection AddSupabaseStorage(this IServiceCollection services, IConfiguration config)

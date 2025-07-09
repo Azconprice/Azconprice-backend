@@ -9,5 +9,6 @@ namespace Application.Models
     public class MasterFileOptions
     {
         public string MasterPath { get; set; }
+        public string VocabPath { get; set; }
     }
 }

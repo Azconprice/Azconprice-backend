@@ -1,4 +1,6 @@
-﻿namespace Infrastructure.Helpers
+﻿using Application.Models;
+
+namespace Infrastructure.Helpers
 {
     internal static class AzTextStaticData
     {
@@ -12,30 +14,23 @@
         (
             new[]
             {
-       "a","acı","ad","adı","altı","altmış","amma","arasında","artıq","az",
-        "bax","bəlkə","bəzi","beş","bəy","belə","biri","biraz","birşey","biz",
-        "bizim","bizlər","bu","bunların","buna","bunun","bunu","bura","burada",
-        "buradan","bütün","cəmi","ci","cü","da","daha","daxili","dedi","də",
-        "dədi","dək","demək","deyil","dir","doqsan","doqquz","dörd","düz",
-        "dəqiqə","dəqiqədə","dəqiqədən","dəqiqəni","dəqiqənin","dəqiqəsini",
-        "edə","edən","edir","edəcək","edilən","edilmiş","edirlər","et","etdi",
-        "etmək","etmə","eyni","eydi","faiz","fərqli","gilə","görə","ha",
-        "haqqında","hara","hardan","harada","hansı","hansısa","hər","hə",
-        "həmin","hələ","həmişə","heç","heç kəs","heç kim","heç nə","heçbir",
-        "heçkəs","heçkim","hesab","i","iki","il","ildə","indi","isə","istifadə",
-        "iyirmi","kənar","kənarda","kənardan","ki","kim","kimə","kiminsə",
-        "kimi","kimisə","kiçik","köhnə","lakin","lap","məhz","mirşey","mən",
-        "mənə","nə","nədən","nəhayət","neçə","necə","niyə","nəsə","nəinki",
-        "ni","o","obirisi","olacaq","olar","olaraq","oldu","olduğu","olmadı",
-        "olmaz","olmuşdur","olsaydı","olsun","on","ona","ondan","onsuzda",
-        "onlar","onların","ostuz","otuz","oy","qədər","qarşı","qırx","saat",
-        "saniyə","səksən","səkkiz","səksən","səni","sənin","sənə","sənsiniz",
-        "səri","sərin","sizi","sizin","siz","sizlər","sonra","sözünü","səhv",
-        "təəssüf","tam","tamamilə","təkrar","tək","tie","ti","təxmini","tır",
-        "tutma","üç","üçün","üçündə","üçündən","üçünə","var","və","vəziyyət",
-        "yaxın","yaxşı","yəqin","yenə","yeddi","yeni","yetmiş","yox","yoxdur",
-        "yoxsa","yüz","zaman","ələlə","əlbəttə","əgər","əks","əksinə","əlaqə",
-        "ərzində"
+       "a","ad","altı","altmış","amma","arasında","artıq","ay","az","bax",
+  "belə","beş","bilər","bir","biraz","biri","birşey","biz","bizim","bizlər",
+  "bu","buna","bundan","bunların","bunu","bunun","buradan","bütün","bəli","bəlkə",
+  "bəy","bəzi","bəzən","ci","cu","cü","cı","da","daha","dedi",
+  "deyil","dir","doqquz","doqsan","dörd","düz","də","dək","dən","dəqiqə",
+  "edir","edən","elə","et","etdi","etmə","etmək","faiz","gilə","görə",
+  "ha","haqqında","harada","heç","hə","həm","həmin","həmişə","hər","idi",
+  "iki","il","ildə","ilk","ilə","in","indi","istifadə","isə","iyirmi",
+  "ki","kim","kimi","kimə","lakin","lap","mirşey","məhz","mən","mənə",
+  "niyə","nə","nəhayət","o","obirisi","of","olan","olar","olaraq","oldu",
+  "olduğu","olmadı","olmaz","olmuşdur","olsun","olur","on","ona","ondan","onlar",
+  "onlardan","onların","onsuzda","onu","onun","oradan","otuz","qarşı","qırx","qədər",
+  "saat","sadəcə","saniyə","siz","sizin","sizlər","sonra","səhv","səkkiz","səksən",
+  "sən","sənin","sənə","təəssüf","var","və","xan","xanım","xeyr","ya",
+  "yalnız","yaxşı","yeddi","yenə","yetmiş","yox","yoxdur","yoxsa","yüz","yəni",
+  "zaman","çox","çünki","öz","özü","ü","üç","üçün","ı","ə",
+  "əgər","əlbəttə","əlli","ən","əslində"
             }
         );
 
@@ -76,12 +71,16 @@
 
         private static readonly string[] GenericRaw =
         {
-            "qurulma","vurulma","verilməsi","çəkilmə","sökülmə","montaj","demontaj","daşınma"
+            "quraşdırma", "qurulma", "vurulma", "verilməsi", "çəkilmə",
+    "sökülmə", "montaj", "demontaj", "daşınma", "mm",
+    "quraşdırıl", "diametri", "mm-ə", "quraşdırıl"
         };
         private static readonly string[] CriticalRaw =
         {
-            "təmir","bərpa","remont","quraşdırma","montaj","demontaj","söküntü","izolyasiya",
-            "boyanma","rənglənmə","vurulma","çəkilmə","tamet","profilsiz","izolyasiyalı"
+             "kombi", "təmir", "bərpa", "remont", "quraşdırma",
+    "montaj", "demontaj", "söküntü", "izolyasiya", "boyanma",
+    "rənglənmə", "vurulma", "çəkilmə", "tamet", "profilsiz",
+    "izolyasiyalı", "şit"
         };
 
         internal static readonly HashSet<string> Generic;

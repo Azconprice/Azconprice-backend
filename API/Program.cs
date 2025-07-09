@@ -18,11 +18,14 @@ builder.Services.AddAuthenticationAndAuthorization(builder.Configuration);
 builder.Services.AddValidators();
 builder.Services.AddSupabaseStorage(builder.Configuration);
 builder.Services.AddQuickSMSService(builder.Configuration);
+builder.Services.AddAzconMatching(builder.Configuration,builder.Environment);
 var masterFilePath = Path.Combine(builder.Environment.ContentRootPath, "Data", "master.xlsx");
+var vocabularyFilePath = Path.Combine(builder.Environment.ContentRootPath, "Data", "vocab.json");
 
 builder.Services.AddSingleton(new MasterFileOptions
 {
-    MasterPath = masterFilePath
+    MasterPath = masterFilePath,
+    VocabPath = vocabularyFilePath,
 });
 
 builder.Services.AddCors(options =>
