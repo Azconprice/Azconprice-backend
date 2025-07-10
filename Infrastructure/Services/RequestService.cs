@@ -63,7 +63,7 @@ namespace Infrastructure.Services
 
             var totalCount = await query.CountAsync();
             var items = await query
-                .Where(r => r.Email.Equals(mail, StringComparison.CurrentCultureIgnoreCase))
+                .Where(r => r.Email.ToLower() == mail.ToLowerInvariant())
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
                 .ToListAsync();
