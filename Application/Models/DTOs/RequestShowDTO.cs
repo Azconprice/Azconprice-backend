@@ -15,5 +15,6 @@ namespace Application.Models.DTOs
         public string Email { get; set; }
         public string Type { get; set; }
         public string Note { get; set; }
+        public DateTime CreatedTime { get; set; }
     }
 }
