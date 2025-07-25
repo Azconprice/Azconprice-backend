@@ -14,6 +14,15 @@ namespace Infrastructure.Helpers
         private static readonly Dictionary<char, char> Tr = new() { { 'ğ', 'g' }, { 'ı', 'i' }, { 'ç', 'c' }, { 'ş', 's' }, { 'ö', 'o' }, { 'ü', 'u' }, { 'ə', 'e' } };
         private static string Transliterate(string s) => new(s.Select(c => Tr.TryGetValue(c, out var r) ? r : c).ToArray());
 
+        public static string? ExtractMaterial(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return null;
+
+            var pattern = @"\b(pvc|mdf|şüşə|suse|alüminium|aluminum|taxta|laminat|beton|daş|polikarbonat)\b";
+            var match = Regex.Match(text.ToLowerInvariant(), pattern, RegexOptions.IgnoreCase);
+            return match.Success ? match.Value.ToLowerInvariant() : null;
+        }
+
         public static string Canon(string txt)
         {
             if (string.IsNullOrWhiteSpace(txt)) return "";

@@ -426,7 +426,7 @@ namespace API.Controllers
             if (user is null)
                 return BadRequest("User not found.");
 
-            var otp = new Random().Next(1000, 9999).ToString();
+            var otp = new Random().Next(100000, 999999).ToString();
             var otpVerification = new OtpVerification
             {
                 Contact = dto.Contact,

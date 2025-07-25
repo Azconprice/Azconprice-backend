@@ -169,26 +169,23 @@ namespace Infrastructure.Services
         }
 
         public FileContentResult ProcessQueryExcelAsync(
-            IFormFile queryFile,
-            string? userId = null,
-            bool isSimple = false)
+    IFormFile queryFile,
+    string? userId = null,
+    bool isSimple = false)
         {
-            /* 1. guard + constants */
             if (queryFile == null || queryFile.Length == 0)
                 throw new ArgumentException("Excel file is required.", nameof(queryFile));
 
-            const int MIN_SCORE = 65;   // python config.THRESHOLD
-            const int PRICE_SCORE = 82;   // python PRICE_AVG_MIN_SCORE
+            const int MIN_SCORE = 65;
+            const int PRICE_SCORE = 82;
             const double MIN_COVER = 0.50;
 
             if (!File.Exists(_masterFilePath))
                 throw new FileNotFoundException("Master file not found", _masterFilePath);
 
-            /* 2. load data */
             var (master, ix) = LoadMaster(_masterFilePath);
             var queries = LoadQueries(queryFile);
 
-            /* 3. match loop */
             var results = new List<MatchedResult>();
             var matchRows = new List<(string Q, string M, int S, decimal? P, string U, string T, string D)>();
 
@@ -199,7 +196,15 @@ namespace Infrastructure.Services
                 var qNums = _numericExtractor.Extract(q.Name);
                 bool hasQn = qNums.Count > 0;
 
+                var qMaterial = AzTextNormalizer.ExtractMaterial(qCan);
+
                 IEnumerable<ProductRow> cand = master;
+
+                if (!string.IsNullOrEmpty(qMaterial))
+                {
+                    cand = master.Where(r => AzTextNormalizer.ExtractMaterial(r.Name) == qMaterial);
+                }
+
                 if (q.Type is "product" or "service" or "mix")
                     cand = cand.Where(m => m.Type == q.Type);
                 if (!string.IsNullOrWhiteSpace(q.Unit))
@@ -211,15 +216,12 @@ namespace Infrastructure.Services
                 {
                     var (mCan, mTok) = ix[m];
 
-                    /* token overlap (non-generic) */
                     if (!qTok.Intersect(mTok.Except(AzTextStaticData.Generic)).Any())
                         continue;
 
-                    /* coverage gate */
                     if (AzTextNormalizer.Coverage(qTok, mTok) < MIN_COVER)
                         continue;
 
-                    /* numeric guard */
                     double numPenalty = 1.0;
                     if (hasQn)
                     {
@@ -231,19 +233,17 @@ namespace Infrastructure.Services
                         else
                         {
                             bool exact = qNums.Any(qp =>
-                                           mNums.Any(mp =>
-                                               Math.Abs(mp.Number - qp.Number) < 1e-6 &&
-                                               mp.Unit == qp.Unit));
+                                mNums.Any(mp =>
+                                    Math.Abs(mp.Number - qp.Number) < 1e-6 &&
+                                    mp.Unit == qp.Unit));
                             if (!exact) continue;
                         }
                     }
 
-                    /* critical token — MUST match */
                     bool critMismatch = AzTextStaticData.Critical
-                                        .Any(c => qTok.Contains(c) ^ mTok.Contains(c));
+                        .Any(c => qTok.Contains(c) ^ mTok.Contains(c));
                     if (critMismatch) continue;
 
-                    /* fuzzy score */
                     double raw = Fuzz.TokenSetRatio(qCan, mCan) * numPenalty;
                     int score = (int)raw;
                     if (score < MIN_SCORE) continue;
@@ -251,7 +251,6 @@ namespace Infrastructure.Services
                     hits.Add((m, score));
                 }
 
-                /* strong hits for price stats */
                 var strong = hits.Where(h => h.Score >= PRICE_SCORE && h.Row.Price.HasValue)
                                  .OrderBy(h => h.Row.Price!.Value)
                                  .ToList();
@@ -260,17 +259,7 @@ namespace Infrastructure.Services
                     matchRows.Add((q.Name, h.Row.Name, h.Score,
                                    h.Row.Price, h.Row.Unit, h.Row.Type, h.Row.Description ?? ""));
 
-                /* collect & clip prices (Tukey 1.5·IQR) */
                 var prices = strong.Select(h => h.Row.Price!.Value).OrderBy(p => p).ToList();
-                if (prices.Count >= 4)
-                {
-                    decimal q25 = prices[(int)(0.25 * (prices.Count - 1))];
-                    decimal q75 = prices[(int)(0.75 * (prices.Count - 1))];
-                    var iqr = q75 - q25;
-                    var lo = q25 - 1.5m * iqr;
-                    var hi = q75 + 1.5m * iqr;
-                    prices = prices.Where(p => p >= lo && p <= hi).ToList();
-                }
 
                 decimal avg = prices.Count == 0 ? 0 : Math.Round(prices.Average(), 2);
                 decimal med = prices.Count switch
@@ -293,7 +282,6 @@ namespace Infrastructure.Services
                 });
             }
 
-            /* 4. build workbook (unchanged) */
             using var wbOut = new XLWorkbook();
             if (isSimple)
             {
@@ -381,7 +369,6 @@ namespace Infrastructure.Services
             };
         }
 
-
         /*──────────────────────── HELPERS ─────────────────────────────*/
 
         private static (List<ProductRow>, Dictionary<ProductRow, (string, HashSet<string>)>)
@@ -420,11 +407,6 @@ namespace Infrastructure.Services
                 var can = AzTextNormalizer.Canon(name);
                 ix[row] = (can, AzTextNormalizer.TokenSet(can));
             }
-
-            // deduplicate by Name+Unit+Type (price ignored)
-            list = list.GroupBy(m => new { m.Name, m.Type, m.Unit })
-                       .Select(g => g.First())
-                       .ToList();
 
             return (list, ix);
         }

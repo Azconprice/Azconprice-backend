@@ -88,7 +88,7 @@ namespace Infrastructure.Services
         private static string GenerateOtpCode()
         {
             var random = new Random();
-            return random.Next(1000, 10000).ToString();
+            return random.Next(100000, 999999).ToString();
         }
 
         public async Task<string> VerifyCodeAsync(string phoneNumber, string code)

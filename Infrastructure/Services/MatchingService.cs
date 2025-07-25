@@ -23,54 +23,72 @@ public sealed class MatchingService : IMatchingService
         _prep = prep; _num = num; _vocab = vocab;
     }
 
-    public List<MatchResultDto> FindMatches(
-        QueryRowDto query,
-        IReadOnlyCollection<MasterRow> masterRows)
+    public List<MatchResultDto> FindMatches(QueryRowDto query, IReadOnlyCollection<MasterRow> masterRows)
     {
         var qCan = _prep.Canon(query.Text);
         var qTokens = _prep.Tokenize(qCan).ToHashSet();
         var qNums = _num.Extract(query.Text);
         var qUnit = (query.Unit ?? "").Trim().ToLowerInvariant();
+        var qMaterial = _prep.ExtractMaterial(query.Text);
+        var qFlag = (query.Flag ?? "").Trim().ToLowerInvariant();
+
+        // Material-based filtering
+        IEnumerable<MasterRow> candidates;
+        if (!string.IsNullOrWhiteSpace(qMaterial))
+        {
+            candidates = masterRows.Where(m => m.Material == qMaterial);
+        }
+        else
+        {
+            var grouped = masterRows
+                .Where(m => m.Material != null)
+                .GroupBy(m => m.Material!)
+                .Select(g => new {
+                    Material = g.Key,
+                    Median = g.Select(x => x.PriceMedian).DefaultIfEmpty().Average()
+                })
+                .OrderBy(x => x.Median)
+                .FirstOrDefault();
+
+            if (grouped != null)
+                candidates = masterRows.Where(m => m.Material == grouped.Material);
+            else
+                candidates = masterRows;
+        }
+
+        // Type/unit filtering
+        if (!string.IsNullOrWhiteSpace(qFlag))
+            candidates = candidates.Where(m => m.Flag == qFlag);
+        if (!string.IsNullOrWhiteSpace(qUnit))
+            candidates = candidates.Where(m => m.Unit == qUnit);
 
         var hits = new List<MatchResultDto>();
-
-        foreach (var m in masterRows)
+        foreach (var m in candidates)
         {
-            // 1. quick token overlap (excluding generic)
             if (!qTokens.Overlaps(m.TokenSet.Except(_vocab.Generic)))
                 continue;
 
-            // 2. coverage
-            var cov = (double)qTokens.Intersect(m.TokenSet).Count() /
-                      Math.Max(1, qTokens.Count);
-            if (cov < MIN_COVER) continue;
+            var cov = (double)qTokens.Intersect(m.TokenSet).Count() / Math.Max(1, qTokens.Count);
+            if (cov < 0.5) continue;
 
-            // 3. numerical guard & unit checks (same as python)
-            var penal = 1.0;
+            double penal = 1.0;
             if (qNums.Count > 0)
             {
                 var mNums = _num.Extract(m.OriginalText);
                 if (mNums.Count > 0)
                 {
                     bool anyExact = qNums.Any(q => mNums.Contains(q));
-                    if (!anyExact) continue;               // size mismatch
+                    if (!anyExact) continue;
                 }
-                else penal = 0.80;                        // python penalty
+                else penal = 0.80;
             }
 
-            if (!string.IsNullOrEmpty(qUnit))
-            {
-                if (!m.Unit.Equals(qUnit, StringComparison.OrdinalIgnoreCase))
-                    continue;
-            }
-
-            // 4. fuzzy score + critical penalty
-            var score = Fuzz.TokenSetRatio(qCan, m.CanonText);
             if (_vocab.Critical.Any(c => qTokens.Contains(c) ^ m.TokenSet.Contains(c)))
-                score = (int)(score * 0.70);
+                continue;
 
+            var score = Fuzz.TokenSetRatio(qCan, m.CanonText);
             score = (int)(score * penal);
-            if (score < THRESHOLD) continue;
+            if (score < 80) continue;
 
             hits.Add(new MatchResultDto(m.OriginalText, m.Price, m.Unit, score));
         }

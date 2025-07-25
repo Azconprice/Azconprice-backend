@@ -9,6 +9,7 @@ namespace Application.Services
     public interface IPreprocessingService
     {
         string Canon(string input);
+        string? ExtractMaterial(string input);
         List<string> Tokenize(string canonText);
     }
 

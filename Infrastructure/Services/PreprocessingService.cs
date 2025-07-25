@@ -15,6 +15,18 @@ public sealed class PreprocessingService : IPreprocessingService
     private static readonly Regex _ws = new("\\s{2,}", RegexOptions.Compiled);
     private static readonly Regex _split = new("\\s+", RegexOptions.Compiled);
 
+    private static readonly Regex _material = new(
+    @"\b(pvc|mdf|şüşə|suse|alüminium|aluminum|taxta|laminat|beton|daş|polikarbonat)\b",
+    RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    public string? ExtractMaterial(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return null;
+        var match = _material.Match(input.ToLowerInvariant());
+        return match.Success ? match.Value.ToLowerInvariant() : null;
+    }
+
+
     private static readonly Dictionary<char, char> _translit =
         new() { ['ğ'] = 'g', ['ı'] = 'i', ['ç'] = 'c', ['ş'] = 's', ['ö'] = 'o', ['ü'] = 'u', ['ə'] = 'e' };
 

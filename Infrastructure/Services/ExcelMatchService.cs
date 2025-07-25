@@ -77,13 +77,11 @@ public sealed class ExcelMatchService : IExcelMatchService, IDisposable
     }
 
     // ---------------------------------------------------------------------
-    private static List<MasterRow> LoadMaster(string path,
-                                          IPreprocessingService prep)
+    private static List<MasterRow> LoadMaster(string path, IPreprocessingService prep)
     {
         var wb = new XLWorkbook(path);
         var ws = wb.Worksheet(1);
 
-        // map headers → column numbers -----------------------------
         var headerRow = ws.Row(1);
         var colByName = headerRow.CellsUsed()
                                  .ToDictionary(
@@ -95,24 +93,48 @@ public sealed class ExcelMatchService : IExcelMatchService, IDisposable
         int colPrice = colByName["qiymət"];
         int colFlag = colByName["tip"];
 
-        //------------------------------------------------------------
         var list = new List<MasterRow>();
+        var pricesByCanon = new Dictionary<string, List<double>>();
+
         foreach (var r in ws.RowsUsed().Skip(1))
         {
             var text = r.Cell(colText).GetString();
             var unit = r.Cell(colUnit).GetString().Trim().ToLowerInvariant();
             var flag = r.Cell(colFlag).GetString().Trim().ToLowerInvariant();
-            var price = GetCellAsDouble(r.Cell(colPrice));   // helper below
-
+            var price = GetCellAsDouble(r.Cell(colPrice));
             if (string.IsNullOrWhiteSpace(text) || price <= 0) continue;
 
             var canon = prep.Canon(text);
             var tokens = prep.Tokenize(canon).ToHashSet();
+            var material = prep.ExtractMaterial(text);
 
-            list.Add(new MasterRow(text, canon, flag, unit, price, tokens));
+            if (!pricesByCanon.ContainsKey(canon))
+                pricesByCanon[canon] = new List<double>();
+            pricesByCanon[canon].Add(price);
+
+            list.Add(new MasterRow(text, canon, flag, unit, price, tokens, material, 0));
         }
+
+        // assign price medians
+        foreach (var m in list)
+        {
+            var canon = m.CanonText;
+            var priceList = pricesByCanon[canon];
+            priceList.Sort();
+            double median = priceList.Count switch
+            {
+                0 => 0,
+                1 => priceList[0],
+                _ => priceList.Count % 2 == 1
+                    ? priceList[priceList.Count / 2]
+                    : (priceList[priceList.Count / 2 - 1] + priceList[priceList.Count / 2]) / 2.0
+            };
+            m.PriceMedian = median;
+        }
+
         return list;
     }
+
 
     private static double GetCellAsDouble(IXLCell cell)
     {
