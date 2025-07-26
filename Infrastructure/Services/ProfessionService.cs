@@ -3,6 +3,7 @@ using Application.Repositories;
 using Application.Services;
 using AutoMapper;
 using Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services
 {
@@ -63,7 +64,7 @@ namespace Infrastructure.Services
         public async Task<IEnumerable<ProfessionShowDTO>> GetAllProfessionsAsync()
         {
             var professions = await _professionRepository.GetAllAsync(false);
-            return professions.Select(p=> _mapper.Map<ProfessionShowDTO>(p));
+            return professions.Select(p => _mapper.Map<ProfessionShowDTO>(p));
         }
 
         public async Task<ProfessionShowDTO?> GetProfessionByIdAsync(string id)
@@ -78,6 +79,22 @@ namespace Infrastructure.Services
                 Name = profession.Name,
                 Description = profession.Description
             };
+        }
+
+        public async Task<IEnumerable<ProfessionShowDTO>> SearchProfessionsAsync(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                throw new ArgumentException("Search query cannot be empty.", nameof(query));
+
+            var professions = await _professionRepository
+                                    .Query()
+                                    .AsNoTracking()
+                                    .Where(p => p.Name.ToLower().Contains(query.ToLower()))
+                                    .ToListAsync();
+
+            var dtos = _mapper.Map<IEnumerable<ProfessionShowDTO>>(professions);
+
+            return dtos;
         }
     }
 }

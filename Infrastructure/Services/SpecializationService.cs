@@ -3,6 +3,7 @@ using Application.Models.DTOs.Specialization;
 using Application.Repositories;
 using Application.Services;
 using Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services
 {
@@ -70,6 +71,51 @@ namespace Infrastructure.Services
                 Name = specialization.Name,
                 Profession = new ProfessionInsideSpecializationDTO { Id = specialization.ProfessionId, Name = specialization.Profession.Name, Description = specialization.Profession.Description },
             };
+        }
+
+        public async Task<IEnumerable<SpecializationShowDTO>> SearchSpecializationAsync(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                throw new ArgumentException("Query cannot be null or empty.", nameof(query));
+
+            var specializations = await _specializationRepository
+                                        .Query()
+                                        .AsNoTracking()
+                                        .Where(s => s.Name.ToLower().Contains(query.ToLower()))
+                                        .ToListAsync();
+
+            var dtos = specializations.Select(s => new SpecializationShowDTO
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Profession = new ProfessionInsideSpecializationDTO { Id = s.ProfessionId, Name = s.Profession.Name, Description = s.Profession.Description },
+            });
+
+            return dtos;
+        }
+
+        public async Task<IEnumerable<SpecializationShowDTO>> SearchSpecializationByProfessionAsync(string query, string professionId)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                throw new ArgumentException("Query cannot be null or empty.", nameof(query));
+
+            if (string.IsNullOrWhiteSpace(professionId))
+                throw new ArgumentException("Profession ID cannot be null or empty.", nameof(professionId));
+
+            var specializations = await _specializationRepository
+                                        .Query()
+                                        .AsNoTracking()
+                                        .Where(s => s.Name.ToLower().Contains(query.ToLower()) && s.ProfessionId.ToString() == professionId)
+                                        .ToListAsync();
+
+            var dtos = specializations.Select(s => new SpecializationShowDTO
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Profession = new ProfessionInsideSpecializationDTO { Id = s.ProfessionId, Name = s.Profession.Name, Description = s.Profession.Description },
+            });
+
+            return dtos;
         }
 
         public async Task<bool> UpdateSpecializationAsync(string id, SpecializationUpdateDTO updatedSpecialization)

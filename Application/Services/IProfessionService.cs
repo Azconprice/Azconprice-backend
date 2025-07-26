@@ -9,5 +9,6 @@ namespace Application.Services
         Task<bool> DeleteProfessionAsync(string id);
         Task<IEnumerable<ProfessionShowDTO>> GetAllProfessionsAsync();
         Task<ProfessionShowDTO?> GetProfessionByIdAsync(string id);
+        Task<IEnumerable<ProfessionShowDTO>> SearchProfessionsAsync(string query);
     }
 }

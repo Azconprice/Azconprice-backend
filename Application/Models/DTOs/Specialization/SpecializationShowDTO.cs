@@ -6,6 +6,6 @@ namespace Application.Models.DTOs.Specialization
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
-        public ProfessionInsideSpecializationDTO Profession { get; set; }
+        //public ProfessionInsideSpecializationDTO Profession { get; set; }
     }
 }

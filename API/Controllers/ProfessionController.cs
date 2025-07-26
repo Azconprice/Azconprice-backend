@@ -37,6 +37,27 @@ namespace API.Controllers
             }
         }
 
+        [HttpGet("search")]
+        [AllowAnonymous]
+        public async Task<ActionResult<IEnumerable<ProfessionShowDTO>>> Search([FromQuery] string query)
+        {
+            try
+            {
+                var result = await _professionService.SearchProfessionsAsync(query);
+                if (!result.Any())
+                    return NotFound("No professions found matching the query.");
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "An error occurred while searching for professions.", ex.Message });
+            }
+        }
+
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(string id, [FromBody] ProfessionUpdateDTO updateDto)

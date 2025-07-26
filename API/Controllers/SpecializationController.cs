@@ -93,6 +93,47 @@ namespace API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("search")]
+        [AllowAnonymous]
+        public async Task<ActionResult<IEnumerable<SpecializationShowDTO>>> Search([FromQuery] string query)
+        {
+            try
+            {
+                var result = await _specializationService.SearchSpecializationAsync(query);
+                if (!result.Any())
+                    return NotFound("No specializations found matching the query.");
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "An error occurred while searching for specializations.", ex.Message });
+            }
+        }
+        [HttpGet("search-by-profession")]
+        [AllowAnonymous]
+        public async Task<ActionResult<IEnumerable<SpecializationShowDTO>>> Search([FromQuery] string query,string professionId)
+        {
+            try
+            {
+                var result = await _specializationService.SearchSpecializationByProfessionAsync(query,professionId);
+                if (!result.Any())
+                    return NotFound("No specializations found matching the query.");
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "An error occurred while searching for specializations.",ex.Message });
+            }
+        }
+
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<ActionResult<SpecializationShowDTO?>> GetById(string id)
