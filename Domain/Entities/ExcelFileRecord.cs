@@ -6,7 +6,6 @@ namespace Domain.Entities
     {
         public string FilePath { get; set; } 
         public string FileName { get; set; } 
-
         public string UserId { get; set; }
         public virtual User User { get; set; }
         public string FirstName { get; set; }

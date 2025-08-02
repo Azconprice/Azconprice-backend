@@ -54,7 +54,7 @@ namespace Infrastructure.Services
             {
                 Id = s.Id,
                 Name = s.Name,
-                Profession = new ProfessionInsideSpecializationDTO { Id = s.ProfessionId, Name = s.Profession.Name, Description = s.Profession.Description },
+                //Profession = new ProfessionInsideSpecializationDTO { Id = s.ProfessionId, Name = s.Profession.Name, Description = s.Profession.Description },
 
             });
         }
@@ -69,7 +69,7 @@ namespace Infrastructure.Services
             {
                 Id = specialization.Id,
                 Name = specialization.Name,
-                Profession = new ProfessionInsideSpecializationDTO { Id = specialization.ProfessionId, Name = specialization.Profession.Name, Description = specialization.Profession.Description },
+                //Profession = new ProfessionInsideSpecializationDTO { Id = specialization.ProfessionId, Name = specialization.Profession.Name, Description = specialization.Profession.Description },
             };
         }
 
@@ -88,7 +88,7 @@ namespace Infrastructure.Services
             {
                 Id = s.Id,
                 Name = s.Name,
-                Profession = new ProfessionInsideSpecializationDTO { Id = s.ProfessionId, Name = s.Profession.Name, Description = s.Profession.Description },
+                //Profession = new ProfessionInsideSpecializationDTO { Id = s.ProfessionId, Name = s.Profession.Name, Description = s.Profession.Description },
             });
 
             return dtos;
@@ -112,7 +112,7 @@ namespace Infrastructure.Services
             {
                 Id = s.Id,
                 Name = s.Name,
-                Profession = new ProfessionInsideSpecializationDTO { Id = s.ProfessionId, Name = s.Profession.Name, Description = s.Profession.Description },
+                //Profession = new ProfessionInsideSpecializationDTO { Id = s.ProfessionId, Name = s.Profession.Name, Description = s.Profession.Description },
             });
 
             return dtos;

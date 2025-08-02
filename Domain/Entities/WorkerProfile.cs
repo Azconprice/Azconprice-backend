@@ -7,7 +7,7 @@ namespace Domain.Entities
         public bool HaveTaxId { get; set; }
         public string? TaxId { get; set; }
         public int Experience { get; set; }
-        public virtual ICollection<WorkerSpecialization> WorkerSpecialization { get; set; }
+        public virtual ICollection<WorkerFunction> WorkerFunctions { get; set; }
         public double Price { get; set; }
     }
 }

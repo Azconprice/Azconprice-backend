@@ -32,8 +32,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.SalesCategory, opt => opt.MapFrom(src => src.SalesCategory));
 
         // Profession and Specialization mappings
-        CreateMap<Profession, ProfessionShowDTO>()
-            .ForMember(dest => dest.Specializations, opt => opt.MapFrom(src => src.Specializations));
+        CreateMap<Profession, ProfessionShowDTO>();
         CreateMap<Specialization, SpecializationShowDTO>();
 
         // For nested DTOs (if used in your DTOs)

@@ -178,6 +178,12 @@ namespace API.Extentions
             services.AddScoped<ISalesCategoryRepository, SalesCategoryRepository>();
             services.AddScoped<IExcelFileRecordRepository, ExcelFileRecordRepository>();
             services.AddScoped<IOtpVerificationRepository, OtpVerificationRepository>();
+            services.AddScoped<IMeasurementUnitRepository, MeasurementUnitRepository>();
+            services.AddScoped<IProductExcelFileRecordRepository, ProductExcelFileRecordRepository>();
+            services.AddScoped<IProductRepository, ProductRepository>();
+            services.AddScoped<IWorkerFunctionRepository, WorkerFunctionRepository>();
+            services.AddScoped<IWorkerFunctionSpecializationRepository, WorkerFunctionSpecializationRepository>();
+
             return services;
         }
 

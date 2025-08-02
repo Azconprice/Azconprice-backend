@@ -51,8 +51,8 @@ namespace Persistence.Contexts
                .HasIndex(sc => sc.Name)
                .IsUnique();
 
-            modelBuilder.Entity<ProductCategory>()
-                .HasIndex(pc => pc.Name)
+            modelBuilder.Entity<MeasurementUnit>()
+                .HasIndex(mu => mu.Unit)
                 .IsUnique();
 
 
@@ -61,16 +61,17 @@ namespace Persistence.Contexts
         public DbSet<SalesCategory> SalesCategory { get; set; }
         public DbSet<Profession> Professions { get; set; }
         public DbSet<Specialization> Specializations { get; set; }
-        public DbSet<WorkerSpecialization> WorkerSpecializations { get; set; }
+        public DbSet<WorkerFunctionSpecialization> WorkerSpecializations { get; set; }
         public DbSet<Request> Requests { get; set; }
         public DbSet<WorkerProfile> WorkerProfiles { get; set; }
         public DbSet<CompanyProfile> CompanyProfiles { get; set; }
         public DbSet<AppLog> AppLogs { get; set; }
         public DbSet<ExcelFileRecord> ExcelFileRecords { get; set; }
         public DbSet<OtpVerification> OtpVerifications { get; set; }
-        public DbSet<ProductCategory> ProductCategories { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<Transactiion> Transactiions { get; set; }
         public DbSet<MeasurementUnit> MeasurementUnits { get; set; }
+        public DbSet<WorkerFunction> WorkerFunctions { get; set; }
+        public DbSet<WorkerFunctionSpecialization> WorkerFunctionSpecializations { get; set; }
     }
 }
