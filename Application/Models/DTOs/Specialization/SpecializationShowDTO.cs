@@ -1,6 +1,4 @@
-﻿using Application.Models.DTOs.Profession;
-
-namespace Application.Models.DTOs.Specialization
+﻿namespace Application.Models.DTOs.Specialization
 {
     public class SpecializationShowDTO
     {

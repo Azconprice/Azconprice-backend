@@ -17,7 +17,7 @@ namespace Application.Repositories
         Task<T?> GetAsync(string id);
         Task<T?> GetAsync(Expression<Func<T, bool>> expression);
 
-        Task<bool> AddAsync(T entity);
+        Task<T?> AddAsync(T entity);
         Task AddRangeAsync(IEnumerable<T> entities);
 
         bool Update(T entity);

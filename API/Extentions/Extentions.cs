@@ -211,6 +211,8 @@ namespace API.Extentions
             services.AddScoped<IMailService, MailService>();
             services.AddAutoMapper(typeof(MappingProfile));
             services.AddScoped<IExcelFileService, ExcelFileService>();
+            services.AddScoped<IMeasurementUnitService, MeasurementUnitService>();
+            services.AddScoped<IWorkerFunctionSpecializationService, WorkerFunctionSpecializationService>();
             return services;
         }
 

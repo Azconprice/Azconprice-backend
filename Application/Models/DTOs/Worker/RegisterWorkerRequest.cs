@@ -10,10 +10,12 @@ namespace Application.Models.DTOs.Worker
         public string Password { get; set; }
         public string ConfirmPassword { get; set; }
         public string PhoneNumber { get; set; }
+        public string ProfessionId { get; set; }
         public IEnumerable<string> Specizalizations { get; set; }
         public bool HaveTaxId { get; set; }
         public string? TaxId { get; set; }
         public string Address { get; set; }
+        public string MeasurementUnitId { get; set; }
         public int Experience { get; set; }
         public double Price { get; set; }
         public IFormFile? ProfilePicture { get; set; }

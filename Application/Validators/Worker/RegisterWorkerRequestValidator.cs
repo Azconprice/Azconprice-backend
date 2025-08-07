@@ -34,15 +34,16 @@ namespace Application.Validators.Worker
                 .Matches(AzerbaijanPhoneRegex)
                 .WithMessage("Phone number must be in one of the following formats: +994102122908, +994 10 212 29 08, or +994-10-212-29-08.");
 
+            RuleFor(x => x.ProfessionId)
+                .NotEmpty().WithMessage("Profession ID is required.");
+
+
             RuleFor(x => x.Specizalizations)
                 .NotNull().WithMessage("At least one specialization is required.")
                 .Must(s => s.Any()).WithMessage("At least one specialization is required.");
 
             RuleFor(x => x.Address)
                 .NotEmpty().WithMessage("Address is required.");
-
-            RuleFor(x => x.Experience)
-                .GreaterThanOrEqualTo(0).WithMessage("Experience must be non-negative.");
 
             RuleFor(x => x.Price)
                 .GreaterThanOrEqualTo(0).WithMessage("Price must be non-negative.");

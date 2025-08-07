@@ -17,10 +17,12 @@ namespace Persistence.Repositories
 
         DbSet<T> Table => _context.Set<T>();
 
-        public async Task<bool> AddAsync(T entity)
+        public async Task<T?> AddAsync(T entity)
         {
             var entry = await Table.AddAsync(entity);
-            return entry.State == EntityState.Added;
+            if( entry.State != EntityState.Added)
+                throw new InvalidOperationException("Entity could not be added to the database.");
+            return entry.Entity;
         }
 
         public async Task AddRangeAsync(IEnumerable<T> entities)

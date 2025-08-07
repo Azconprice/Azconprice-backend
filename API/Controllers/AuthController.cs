@@ -18,7 +18,6 @@ namespace API.Controllers
     public class AuthController(
         UserManager<User> userManager,
         SignInManager<User> signInManager,
-        RoleManager<IdentityRole> roleManager,
         IJWTService jwtService,
         IMailService mailService,
         IValidator<RegisterWorkerRequest> registerWorkerValidator,
@@ -32,37 +31,22 @@ namespace API.Controllers
         ICompanyService companyService,
         ISMSService smsService,
         IValidator<SendPhoneVerificationRequest> sendPhoneVerificationRequestValidator,
-        IOtpVerificationRepository otpVerificationRepository) : ControllerBase
+        IOtpVerificationRepository otpVerificationRepository,
+        IWorkerFunctionRepository workerFunctionRepository,
+        IWorkerFunctionSpecializationService workerFunctionSpecializationService) : ControllerBase
     {
-        private readonly UserManager<User> _userManager = userManager;
-        private readonly SignInManager<User> _signInManager = signInManager;
-        private readonly RoleManager<IdentityRole> _roleManager = roleManager;
-        private readonly IJWTService _jwtService = jwtService;
-        private readonly IMailService _mailService = mailService;
-        private readonly IValidator<RegisterWorkerRequest> _registerWorkerValidator = registerWorkerValidator;
-        private readonly IValidator<RegisterUserRequest> _registerUserValidator = registerUserValidator;
-        private readonly IValidator<RegisterCompanyRequest> _registerCompanyValidator = registerCompanyValidator;
-        private readonly IValidator<SendPhoneVerificationRequest> _sendPhoneVerificationRequestValidator = sendPhoneVerificationRequestValidator;
-        private readonly IWorkerProfileRepository _workerProfileRepository = workerProfileRepository;
-        private readonly ICompanyProfileRepository _companyProfileRepository = companyProfileRepository;
-        private readonly IBucketService _bucketService = bucketService;
-        private readonly IWorkerService _workerService = workerService;
-        private readonly IAppLogger _appLogger = appLogger;
-        private readonly ICompanyService _companyService = companyService;
-        private readonly ISMSService _smsService = smsService;
-        private readonly IOtpVerificationRepository _otpVerificationRepository = otpVerificationRepository;
 
         private async Task<AuthTokenDTO> GenerateToken(User user)
         {
-            var roles = await _userManager.GetRolesAsync(user);
-            var claims = await _userManager.GetClaimsAsync(user);
+            var roles = await userManager.GetRolesAsync(user);
+            var claims = await userManager.GetClaimsAsync(user);
 
-            var accessToken = _jwtService.GenerateSecurityToken(user.Id, user.Email, user.FirstName, user.LastName, roles, claims);
+            var accessToken = jwtService.GenerateSecurityToken(user.Id, user.Email, user.FirstName, user.LastName, roles, claims);
 
             var refreshToken = Guid.NewGuid().ToString("N").ToLower();
 
             user.RefreshToken = refreshToken;
-            await _userManager.UpdateAsync(user);
+            await userManager.UpdateAsync(user);
 
             return new AuthTokenDTO
             {
@@ -74,7 +58,7 @@ namespace API.Controllers
         [HttpPost("otp-create")]
         public async Task<IActionResult> SendPhoneVerification([FromBody] SendPhoneVerificationRequest request)
         {
-            var validationResult = await _sendPhoneVerificationRequestValidator.ValidateAsync(request);
+            var validationResult = await sendPhoneVerificationRequestValidator.ValidateAsync(request);
 
             if (!validationResult.IsValid)
             {
@@ -86,7 +70,7 @@ namespace API.Controllers
             }
             try
             {
-                var status = await _smsService.SendVerificationCodeAsync(request.PhoneNumber);
+                var status = await smsService.SendVerificationCodeAsync(request.PhoneNumber);
                 return Ok(status);
             }
             catch (ArgumentException ex)
@@ -103,7 +87,7 @@ namespace API.Controllers
 
             try
             {
-                var status = await _smsService.VerifyCodeAsync(request.PhoneNumber, request.Code);
+                var status = await smsService.VerifyCodeAsync(request.PhoneNumber, request.Code);
                 return Ok(status);
             }
             catch (ArgumentException ex)
@@ -117,7 +101,7 @@ namespace API.Controllers
         [HttpPost("register/user")]
         public async Task<ActionResult> RegisterUser([FromForm] RegisterUserRequest request)
         {
-            var validationResult = await _registerUserValidator.ValidateAsync(request);
+            var validationResult = await registerUserValidator.ValidateAsync(request);
 
             if (!validationResult.IsValid)
             {
@@ -135,7 +119,7 @@ namespace API.Controllers
 
                 try
                 {
-                    profilePictureUrl = await _bucketService.UploadAsync(request.ProfilePicture);
+                    profilePictureUrl = await bucketService.UploadAsync(request.ProfilePicture);
                 }
                 catch (Exception ex)
                 {
@@ -144,11 +128,11 @@ namespace API.Controllers
                 }
             }
 
-            var existingUser = await _userManager.FindByEmailAsync(request.Email);
+            var existingUser = await userManager.FindByEmailAsync(request.Email);
             if (existingUser is not null)
                 return Conflict("User with this email already exists");
 
-            existingUser = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber.Replace(" ", "").Replace("-", ""));
+            existingUser = await userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber.Replace(" ", "").Replace("-", ""));
             if (existingUser is not null)
                 return Conflict("User with this phone number already exists");
 
@@ -162,14 +146,14 @@ namespace API.Controllers
                 ProfilePicture = profilePictureUrl,
                 PhoneNumber = request.PhoneNumber.Replace(" ", "").Replace("-", "")
             };
-            var result = await _userManager.CreateAsync(user, request.Password);
+            var result = await userManager.CreateAsync(user, request.Password);
 
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
 
-            await _userManager.AddToRoleAsync(user, "User");
+            await userManager.AddToRoleAsync(user, "User");
 
-            await _appLogger.LogAsync(
+            await appLogger.LogAsync(
             action: "User Registered",
             relatedEntityId: user.Id,
             userId: user.Id,
@@ -188,21 +172,21 @@ namespace API.Controllers
             if (string.IsNullOrWhiteSpace(emailConfrimation.Email))
                 return BadRequest("Email is required.");
 
-            var user = await _userManager.FindByEmailAsync(emailConfrimation.Email);
+            var user = await userManager.FindByEmailAsync(emailConfrimation.Email);
             if (user is null)
                 return BadRequest("User with this email does not exist.");
 
-            if (await _userManager.IsEmailConfirmedAsync(user))
+            if (await userManager.IsEmailConfirmedAsync(user))
                 return BadRequest("Email is already confirmed.");
 
-            var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var confirmToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
             var url = Url.Action(nameof(ConfirmEmail), "Auth", new { email = user.Email, token = confirmToken }, Request.Scheme);
 
             if (url is not null)
             {
-                _mailService.SendConfirmationMessage(user.Email, url);
+                mailService.SendConfirmationMessage(user.Email, url);
 
-                await _appLogger.LogAsync(
+                await appLogger.LogAsync(
                     action: "Resent Email Confirmation",
                     relatedEntityId: user.Id,
                     userId: user.Id,
@@ -219,7 +203,7 @@ namespace API.Controllers
         {
             try
             {
-                var validationResult = await _registerWorkerValidator.ValidateAsync(request);
+                var validationResult = await registerWorkerValidator.ValidateAsync(request);
 
                 if (!validationResult.IsValid)
                 {
@@ -230,15 +214,15 @@ namespace API.Controllers
                 // Specialization validation
                 if (request.Specizalizations != null && request.Specizalizations.Any())
                 {
-                    if (!await _workerService.AreSpecializationsValid(request.Specizalizations))
+                    if (!await workerService.AreSpecializationsValid(request.Specizalizations))
                         return BadRequest(new { Error = "One or more specialization IDs are invalid." });
                 }
 
-                var existingUser = await _userManager.FindByEmailAsync(request.Email);
+                var existingUser = await userManager.FindByEmailAsync(request.Email);
                 if (existingUser is not null)
                     return Conflict("User with this email already exists");
 
-                existingUser = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber.Replace(" ", "").Replace("-", ""));
+                existingUser = await userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber.Replace(" ", "").Replace("-", ""));
                 if (existingUser is not null)
                     return Conflict("User with this phone number already exists");
 
@@ -249,7 +233,7 @@ namespace API.Controllers
 
                     try
                     {
-                        profilePictureUrl = await _bucketService.UploadAsync(request.ProfilePicture);
+                        profilePictureUrl = await bucketService.UploadAsync(request.ProfilePicture);
                     }
                     catch (Exception ex)
                     {
@@ -270,7 +254,7 @@ namespace API.Controllers
                     PhoneNumber = request.PhoneNumber.Replace(" ", "").Replace("-", "")
                 };
 
-                var result = await _userManager.CreateAsync(user, request.Password);
+                var result = await userManager.CreateAsync(user, request.Password);
                 if (!result.Succeeded)
                     return BadRequest(result.Errors);
 
@@ -283,12 +267,32 @@ namespace API.Controllers
                     Price = request.Price,
                 };
 
-                await _workerProfileRepository.AddAsync(workerProfile);
-                await _workerProfileRepository.SaveChangesAsync();
 
-                await _userManager.AddToRoleAsync(user, "Worker");
+                var addedProfile = await workerProfileRepository.AddAsync(workerProfile);
+                await workerFunctionRepository.SaveChangesAsync();
 
-                await _appLogger.LogAsync(
+                var workerFunction = new WorkerFunction
+                {
+                    ProfessionId = Guid.Parse(request.ProfessionId),
+                    MeasurementUnitId = Guid.Parse(request.MeasurementUnitId),
+                    WorkerProfileId = addedProfile.Id,
+                    Price = request.Price,
+                    CreatedTime = DateTime.UtcNow,
+                };
+
+                var addedWorkerFunction = await workerFunctionRepository.AddAsync(workerFunction) ?? throw new Exception("Internal server error");
+                await workerFunctionRepository.SaveChangesAsync();
+
+
+
+                if (request.Specizalizations is not null && request.Specizalizations.Any())
+                {
+                    await workerFunctionSpecializationService.AddRangeOfSpecializationsToWorkerFunctionAsync(addedWorkerFunction.Id, request.Specizalizations);
+                }
+
+                await userManager.AddToRoleAsync(user, "Worker");
+
+                await appLogger.LogAsync(
                 action: "Worker Registered",
                 relatedEntityId: user.Id,
                 userId: user.Id,
@@ -296,10 +300,16 @@ namespace API.Controllers
                 details: $"Worker registered with email {user.Email}"
                 );
 
+                await workerProfileRepository.SaveChangesAsync();
+
+
                 return Ok();
             }
             catch (Exception e)
             {
+                var user = await userManager.FindByEmailAsync(request.Email);
+                if (user is not null)
+                    await userManager.DeleteAsync(user);
                 Console.WriteLine($"🔥 CRASH: {e}");
                 return StatusCode(500, "Unhandled server error.");
             }
@@ -308,7 +318,7 @@ namespace API.Controllers
         [HttpPost("register/company")]
         public async Task<IActionResult> RegisterCompany([FromForm] RegisterCompanyRequest request)
         {
-            var validationResult = await _registerCompanyValidator.ValidateAsync(request);
+            var validationResult = await registerCompanyValidator.ValidateAsync(request);
 
             if (!validationResult.IsValid)
             {
@@ -319,16 +329,16 @@ namespace API.Controllers
                 return BadRequest(new { Errors = errors });
             }
 
-            if (await _companyService.IsSalesCategoryValid(request.SalesCategoryId) is false)
+            if (await companyService.IsSalesCategoryValid(request.SalesCategoryId) is false)
             {
                 return BadRequest(new { Error = "Invalid sales category ID." });
             }
 
-            var existingUser = await _userManager.FindByEmailAsync(request.Email);
+            var existingUser = await userManager.FindByEmailAsync(request.Email);
             if (existingUser is not null)
                 return Conflict("Company with this email already exists");
 
-            existingUser = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber.Replace(" ", "").Replace("-", ""));
+            existingUser = await userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber.Replace(" ", "").Replace("-", ""));
             if (existingUser is not null)
                 return Conflict("Company with this phone number already exists");
 
@@ -340,7 +350,7 @@ namespace API.Controllers
                 // 🔍 Wrap Cloudflare upload in try-catch
                 try
                 {
-                    logo = await _bucketService.UploadAsync(request.Logo);
+                    logo = await bucketService.UploadAsync(request.Logo);
                 }
                 catch (Exception ex)
                 {
@@ -357,7 +367,7 @@ namespace API.Controllers
 
                 try
                 {
-                    tax = await _bucketService.UploadTaxIdAsync(request.TaxId, fileName);
+                    tax = await bucketService.UploadTaxIdAsync(request.TaxId, fileName);
                 }
                 catch (Exception ex)
                 {
@@ -379,7 +389,7 @@ namespace API.Controllers
                 PhoneNumber = request.PhoneNumber.Replace(" ", "").Replace("-", "")
             };
 
-            var result = await _userManager.CreateAsync(user, request.Password);
+            var result = await userManager.CreateAsync(user, request.Password);
 
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
@@ -393,12 +403,12 @@ namespace API.Controllers
                 IsConfirmed = false,
                 SalesCategoryId = Guid.Parse(request.SalesCategoryId)
             };
-            await _companyProfileRepository.AddAsync(companyProfile);
-            await _companyProfileRepository.SaveChangesAsync();
+            await companyProfileRepository.AddAsync(companyProfile);
+            await companyProfileRepository.SaveChangesAsync();
 
-            await _userManager.AddToRoleAsync(user, "Company");
+            await userManager.AddToRoleAsync(user, "Company");
 
-            await _appLogger.LogAsync(
+            await appLogger.LogAsync(
                 action: "Company Registered",
                 relatedEntityId: user.Id,
                 userId: user.Id,
@@ -420,8 +430,8 @@ namespace API.Controllers
                 return BadRequest("Invalid contact type.");
 
             User? user = contactType == ContactType.Email
-                ? await _userManager.FindByEmailAsync(dto.Contact)
-                : await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == dto.Contact);
+                ? await userManager.FindByEmailAsync(dto.Contact)
+                : await userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == dto.Contact);
 
             if (user is null)
                 return BadRequest("User not found.");
@@ -435,13 +445,13 @@ namespace API.Controllers
                 ExpirationDate = DateTime.UtcNow.AddMinutes(10),
                 IsVerified = false
             };
-            await _otpVerificationRepository.AddAsync(otpVerification);
-            await _otpVerificationRepository.SaveChangesAsync();
+            await otpVerificationRepository.AddAsync(otpVerification);
+            await otpVerificationRepository.SaveChangesAsync();
 
             if (contactType == ContactType.Email)
-                _mailService.SendPasswordResetMessage(dto.Contact, $"Your password reset code is: {otp}");
+                mailService.SendPasswordResetMessage(dto.Contact, $"Your password reset code is: {otp}");
             else
-                await _smsService.SendVerificationCodeAsync(dto.Contact, otp);
+                await smsService.SendVerificationCodeAsync(dto.Contact, otp);
 
             return Ok("OTP sent.");
         }
@@ -456,13 +466,13 @@ namespace API.Controllers
                 (contactType != ContactType.Email && contactType != ContactType.Phone))
                 return BadRequest("Invalid contact type.");
 
-            var otpRecord = await _otpVerificationRepository.GetValidOtpAsync(dto.Contact, contactType, dto.Otp);
+            var otpRecord = await otpVerificationRepository.GetValidOtpAsync(dto.Contact, contactType, dto.Otp);
             if (otpRecord is null)
                 return BadRequest("Invalid or expired OTP.");
 
             otpRecord.IsVerified = true;
-            _otpVerificationRepository.Update(otpRecord);
-            await _otpVerificationRepository.SaveChangesAsync();
+            otpVerificationRepository.Update(otpRecord);
+            await otpVerificationRepository.SaveChangesAsync();
 
             return Ok("OTP verified. You may now reset your password.");
         }
@@ -477,24 +487,24 @@ namespace API.Controllers
                 (contactType != ContactType.Email && contactType != ContactType.Phone))
                 return BadRequest("Invalid contact type.");
 
-            var otpRecord = await _otpVerificationRepository.GetLatestVerifiedCodeAsync(dto.Contact, contactType);
+            var otpRecord = await otpVerificationRepository.GetLatestVerifiedCodeAsync(dto.Contact, contactType);
             if (otpRecord is null)
                 return BadRequest("OTP verification required.");
 
             User? user = contactType == ContactType.Email
-                ? await _userManager.FindByEmailAsync(dto.Contact)
-                : await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == dto.Contact);
+                ? await userManager.FindByEmailAsync(dto.Contact)
+                : await userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == dto.Contact);
 
             if (user is null)
                 return BadRequest("User not found.");
 
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var result = await _userManager.ResetPasswordAsync(user, token, dto.NewPassword);
+            var token = await userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await userManager.ResetPasswordAsync(user, token, dto.NewPassword);
 
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
 
-            await _appLogger.LogAsync(
+            await appLogger.LogAsync(
                 action: "Password Reset",
                 relatedEntityId: user.Id,
                 userId: user.Id,
@@ -509,19 +519,19 @@ namespace API.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<AuthTokenDTO>> Login(LoginRequest request)
         {
-            var user = await _userManager.FindByEmailAsync(request.Email);
+            var user = await userManager.FindByEmailAsync(request.Email);
             if (user is null)
             {
                 return BadRequest();
             }
-            if (await _userManager.IsEmailConfirmedAsync(user) || user.PhoneNumberConfirmed)
+            if (await userManager.IsEmailConfirmedAsync(user) || user.PhoneNumberConfirmed)
             {
-                var canSignIn = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
+                var canSignIn = await signInManager.CheckPasswordSignInAsync(user, request.Password, false);
 
                 if (!canSignIn.Succeeded)
                     return BadRequest();
 
-                await _appLogger.LogAsync(
+                await appLogger.LogAsync(
                     action: "Logged In",
                     relatedEntityId: user.Id,
                     userId: user.Id,
@@ -537,7 +547,7 @@ namespace API.Controllers
         [HttpPost("refresh")]
         public async Task<ActionResult<AuthTokenDTO>> RefreshToken([FromBody] RefreshTokenRequest request)
         {
-            var user = await _userManager.Users.FirstOrDefaultAsync(e => e.RefreshToken == request.RefreshToken);
+            var user = await userManager.Users.FirstOrDefaultAsync(e => e.RefreshToken == request.RefreshToken);
 
             if (user is null)
                 return Unauthorized();
@@ -551,15 +561,15 @@ namespace API.Controllers
             if (string.IsNullOrWhiteSpace(emailConfrimation.Email))
                 return BadRequest("Email is required.");
 
-            var user = await _userManager.FindByEmailAsync(emailConfrimation.Email);
+            var user = await userManager.FindByEmailAsync(emailConfrimation.Email);
 
             if (user is null)
                 return BadRequest("User with this email does not exist.");
 
-            var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var confirmToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
             var url = Url.Action(nameof(ConfirmEmail), "Auth", new { email = user.Email, token = confirmToken }, Request.Scheme);
             if (url is not null)
-                _mailService.SendConfirmationMessage(user.Email, url);
+                mailService.SendConfirmationMessage(user.Email, url);
 
             return Ok("Confirmation email sent.");
         }
@@ -568,14 +578,14 @@ namespace API.Controllers
         [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<IActionResult> ConfirmEmail(string email, string token)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await userManager.FindByEmailAsync(email);
             if (user is not null)
             {
-                var result = await _userManager.ConfirmEmailAsync(user, token);
+                var result = await userManager.ConfirmEmailAsync(user, token);
                 if (result.Succeeded)
                 {
 
-                    await _appLogger.LogAsync(
+                    await appLogger.LogAsync(
                     action: "Email Successfully Confirmed",
                     relatedEntityId: user.Id,
                     userId: user.Id,
@@ -592,7 +602,7 @@ namespace API.Controllers
                 }
                 else
                 {
-                    await _appLogger.LogAsync(
+                    await appLogger.LogAsync(
                    action: "Email Confirmation failed due to token exporation",
                    relatedEntityId: user.Id,
                    userId: user.Id,
