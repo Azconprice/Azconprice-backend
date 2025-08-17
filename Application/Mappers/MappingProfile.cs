@@ -34,6 +34,7 @@ public class MappingProfile : Profile
         // Profession and Specialization mappings
         CreateMap<Profession, ProfessionShowDTO>();
         CreateMap<Specialization, SpecializationShowDTO>();
+        CreateMap<MeasurementUnit, MeasurementUnitShowDTO>();
 
         // For nested DTOs (if used in your DTOs)
         CreateMap<Profession, ProfessionInsideSpecializationDTO>();

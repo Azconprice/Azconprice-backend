@@ -13,11 +13,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
-using RapidFuzz;           // ✅ RapidFuzz
-// … other using-lines (AzTextNormalizer, etc.)
-
-
-
 
 
 namespace Infrastructure.Services
@@ -71,17 +66,18 @@ namespace Infrastructure.Services
         IBucketService bucketService,
         IMapper mapper,
            MasterFileOptions masterFileOptions,
-           INumericExtractor numericExtractor) : IExcelFileService
+           INumericExtractor numericExtractor,
+           IMeasurementUnitRepository measurementUnitRepository) : IExcelFileService
     {
-        private readonly string _masterFilePath = masterFileOptions.MasterPath;
-        private readonly IExcelFileRecordRepository _repository = repository;
-        private readonly IBucketService _bucketService = bucketService;
-        private readonly IMapper _mapper = mapper;
-        private readonly INumericExtractor _numericExtractor = numericExtractor;
+        private readonly string masterFilePath = masterFileOptions.MasterPath;
+        private readonly IExcelFileRecordRepository repository = repository;
+        private readonly IBucketService bucketService = bucketService;
+        private readonly IMapper mapper = mapper;
+        private readonly INumericExtractor numericExtractor = numericExtractor;
 
         public async Task<PaginatedResult<ExcelFileDTO>> GetExcelFilesAsync(PaginationRequest request)
         {
-            var query = _repository.Query()
+            var query = repository.Query()
                 .OrderByDescending(x => x.UploadedAt);
 
             var totalCount = await query.CountAsync();
@@ -94,8 +90,8 @@ namespace Infrastructure.Services
             var result = new List<ExcelFileDTO>();
             foreach (var file in files)
             {
-                var dto = _mapper.Map<ExcelFileDTO>(file);
-                dto.Url = await _bucketService.GetSignedUrlAsync(file.FilePath);
+                var dto = mapper.Map<ExcelFileDTO>(file);
+                dto.Url = await bucketService.GetSignedUrlAsync(file.FilePath);
                 result.Add(dto);
             }
 
@@ -110,12 +106,12 @@ namespace Infrastructure.Services
 
         public async Task<int> GetExcelFileCountAsync()
         {
-            return await _repository.GetTotalCountAsync();
+            return await repository.GetTotalCountAsync();
         }
 
         public async Task<ExcelFileDTO> UploadExcelAsync(IFormFile file, string firstName, string lastName, string email, string userId)
         {
-            var path = await _bucketService.UploadExcelAsync(file, firstName, lastName, email, userId);
+            var path = await bucketService.UploadExcelAsync(file, firstName, lastName, email, userId);
 
             var record = new ExcelFileRecord
             {
@@ -130,18 +126,18 @@ namespace Infrastructure.Services
                 Status = ExcelFileStatus.Pending
             };
 
-            await _repository.AddAsync(record);
-            await _repository.SaveChangesAsync();
+            await repository.AddAsync(record);
+            await repository.SaveChangesAsync();
 
-            var dto = _mapper.Map<ExcelFileDTO>(record);
-            dto.Url = await _bucketService.GetSignedUrlAsync(record.FilePath);
+            var dto = mapper.Map<ExcelFileDTO>(record);
+            dto.Url = await bucketService.GetSignedUrlAsync(record.FilePath);
 
             return dto;
         }
 
         public async Task<PaginatedResult<ExcelFileDTO>> GetExcelFilesByUserAsync(string userId, PaginationRequest request)
         {
-            var query = _repository.Query()
+            var query = repository.Query()
                 .Where(x => x.UserId == userId)
                 .OrderByDescending(x => x.UploadedAt);
 
@@ -154,8 +150,8 @@ namespace Infrastructure.Services
             var result = new List<ExcelFileDTO>();
             foreach (var file in files)
             {
-                var dto = _mapper.Map<ExcelFileDTO>(file);
-                dto.Url = await _bucketService.GetSignedUrlAsync(file.FilePath);
+                var dto = mapper.Map<ExcelFileDTO>(file);
+                dto.Url = await bucketService.GetSignedUrlAsync(file.FilePath);
                 result.Add(dto);
             }
 
@@ -176,14 +172,14 @@ namespace Infrastructure.Services
             if (queryFile == null || queryFile.Length == 0)
                 throw new ArgumentException("Excel file is required.", nameof(queryFile));
 
-            const int MIN_SCORE = 65;
-            const int PRICE_SCORE = 82;
-            const double MIN_COVER = 0.50;
+            const int MINSCORE = 65;
+            const int PRICESCORE = 82;
+            const double MINCOVER = 0.50;
 
-            if (!File.Exists(_masterFilePath))
-                throw new FileNotFoundException("Master file not found", _masterFilePath);
+            if (!File.Exists(masterFilePath))
+                throw new FileNotFoundException("Master file not found", masterFilePath);
 
-            var (master, ix) = LoadMaster(_masterFilePath);
+            var (master, ix) = LoadMaster(masterFilePath);
             var queries = LoadQueries(queryFile);
 
             var results = new List<MatchedResult>();
@@ -193,7 +189,7 @@ namespace Infrastructure.Services
             {
                 var qCan = AzTextNormalizer.Canon(q.Name);
                 var qTok = AzTextNormalizer.TokenSet(qCan);
-                var qNums = _numericExtractor.Extract(q.Name);
+                var qNums = numericExtractor.Extract(q.Name);
                 bool hasQn = qNums.Count > 0;
 
                 var qMaterial = AzTextNormalizer.ExtractMaterial(qCan);
@@ -219,13 +215,13 @@ namespace Infrastructure.Services
                     if (!qTok.Intersect(mTok.Except(AzTextStaticData.Generic)).Any())
                         continue;
 
-                    if (AzTextNormalizer.Coverage(qTok, mTok) < MIN_COVER)
+                    if (AzTextNormalizer.Coverage(qTok, mTok) < MINCOVER)
                         continue;
 
                     double numPenalty = 1.0;
                     if (hasQn)
                     {
-                        var mNums = _numericExtractor.Extract(m.Name);
+                        var mNums = numericExtractor.Extract(m.Name);
                         if (mNums.Count == 0)
                         {
                             numPenalty = 0.80;
@@ -246,12 +242,12 @@ namespace Infrastructure.Services
 
                     double raw = Fuzz.TokenSetRatio(qCan, mCan) * numPenalty;
                     int score = (int)raw;
-                    if (score < MIN_SCORE) continue;
+                    if (score < MINSCORE) continue;
 
                     hits.Add((m, score));
                 }
 
-                var strong = hits.Where(h => h.Score >= PRICE_SCORE && h.Row.Price.HasValue)
+                var strong = hits.Where(h => h.Score >= PRICESCORE && h.Row.Price.HasValue)
                                  .OrderBy(h => h.Row.Price!.Value)
                                  .ToList();
 
@@ -365,7 +361,7 @@ namespace Infrastructure.Services
 
             return new FileContentResult(mem.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             {
-                FileDownloadName = "processed_results.xlsx"
+                FileDownloadName = "processedresults.xlsx"
             };
         }
 
@@ -463,5 +459,124 @@ namespace Infrastructure.Services
                 CultureInfo.InvariantCulture, out var d) ? d : (decimal?)null;
         }
 
+        public async Task<FileContentResult> GetProductsExcelExampleForCompaniesAsync()
+        {
+            var unitNames = await measurementUnitRepository.Query()
+                .AsNoTracking()
+                .OrderBy(u => u.Unit)
+                .Select(u => u.Unit)
+                .ToListAsync();
+
+            using var wb = new XLWorkbook();
+
+            // Hidden Lookups sheet
+            var lookups = wb.AddWorksheet("Lookups");
+
+            // --- Product Type enum
+            var typeValues = new[] { "Mix", "Product", "Service" };
+            lookups.Cell("A1").Value = "ProductTypes";
+            for (int i = 0; i < typeValues.Length; i++)
+                lookups.Cell(i + 2, 1).Value = typeValues[i];
+
+            var typeRange = lookups.Range(2, 1, 1 + typeValues.Length, 1);
+            typeRange.AddToNamed("TypeList", XLScope.Workbook);
+
+            // --- Measurement Units (from DB)
+            lookups.Cell("C1").Value = "MeasurementUnits";
+            for (int i = 0; i < unitNames.Count; i++)
+                lookups.Cell(i + 2, 3).Value = unitNames[i];
+
+            var muLastRow = Math.Max(2, unitNames.Count + 1);
+            var muRange = lookups.Range(2, 3, muLastRow, 3);
+            muRange.AddToNamed("MeasurementUnitList", XLScope.Workbook);
+
+            // Hide lookups from user
+            lookups.Visibility = XLWorksheetVisibility.VeryHidden;
+
+            // Main Products sheet
+            var ws = wb.AddWorksheet("Products");
+
+            ws.Cell("A1").Value = "Name*";
+            ws.Cell("B1").Value = "Description";
+            ws.Cell("C1").Value = "Price*";
+            ws.Cell("D1").Value = "Type*";
+            ws.Cell("E1").Value = "Measurement Unit*";
+
+            ws.Range("A1:E1").Style.Font.Bold = true;
+            ws.Column("C").Style.NumberFormat.Format = "#,##0.00";
+            ws.Columns(1, 5).AdjustToContents();
+
+            // Example row
+            ws.Cell("A2").Value = "Sample Product";
+            ws.Cell("B2").Value = "Optional description";
+            ws.Cell("C2").Value = 12.50;
+            ws.Cell("D2").Value = typeValues[0];
+            if (unitNames.Count > 0) ws.Cell("E2").Value = unitNames[0];
+
+            const int lastRow = 10_000;
+            var requiredFill = XLColor.FromHtml("#FFF8E1");
+
+            // --- Validations ---
+
+            // Name: required text length ≥ 1
+            var nameDv = ws.Range($"A2:A{lastRow}").CreateDataValidation();
+            nameDv.AllowedValues = XLAllowedValues.TextLength;
+            nameDv.Operator = XLOperator.EqualOrGreaterThan;
+            nameDv.MinValue = "1";
+            nameDv.IgnoreBlanks = false;
+            nameDv.ErrorStyle = XLErrorStyle.Stop;
+            nameDv.ErrorTitle = "Required";
+            nameDv.ErrorMessage = "Name cannot be empty.";
+            ws.Range($"A2:A{lastRow}").Style.Fill.BackgroundColor = requiredFill;
+
+            // Price: decimal ≥ 0
+            var priceDv = ws.Range($"C2:C{lastRow}").CreateDataValidation();
+            priceDv.AllowedValues = XLAllowedValues.Decimal;
+            priceDv.Operator = XLOperator.EqualOrGreaterThan;
+            priceDv.MinValue = "0";
+            priceDv.IgnoreBlanks = false;
+            priceDv.ErrorStyle = XLErrorStyle.Stop;
+            priceDv.ErrorTitle = "Invalid price";
+            priceDv.ErrorMessage = "Enter a number ≥ 0.";
+            ws.Range($"C2:C{lastRow}").Style.Fill.BackgroundColor = requiredFill;
+
+            // Type: dropdown from named range
+            var typeDv = ws.Range($"D2:D{lastRow}").CreateDataValidation();
+            typeDv.AllowedValues = XLAllowedValues.List;
+            typeDv.InCellDropdown = true;
+            typeDv.IgnoreBlanks = false;
+            typeDv.List("=TypeList");
+            typeDv.ErrorStyle = XLErrorStyle.Stop;
+            typeDv.ErrorTitle = "Invalid type";
+            typeDv.ErrorMessage = "Choose one of: Mix, Product, Service.";
+            ws.Range($"D2:D{lastRow}").Style.Fill.BackgroundColor = requiredFill;
+
+            // Measurement Unit: dropdown from named range
+            var muDv = ws.Range($"E2:E{lastRow}").CreateDataValidation();
+            muDv.AllowedValues = XLAllowedValues.List;
+            muDv.InCellDropdown = true;
+            muDv.IgnoreBlanks = false;
+            muDv.List("=MeasurementUnitList");
+            muDv.ErrorStyle = XLErrorStyle.Stop;
+            muDv.ErrorTitle = "Invalid unit";
+            muDv.ErrorMessage = "Pick a unit from the dropdown.";
+            ws.Range($"E2:E{lastRow}").Style.Fill.BackgroundColor = requiredFill;
+
+            // Notes
+            ws.Cell("G2").Value = "Notes:";
+            ws.Cell("G3").Value =
+                "• Yellow cells are required.\n" +
+                "• Use dropdowns for Type and Measurement Unit.\n" +
+                "• If Unit list is empty, please define units first.";
+
+            using var ms = new MemoryStream();
+            wb.SaveAs(ms);
+
+            return new FileContentResult(ms.ToArray(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            {
+                FileDownloadName = "ProductsImportTemplate.xlsx"
+            };
+        }
     }
 }

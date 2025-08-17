@@ -41,7 +41,7 @@ namespace API.Controllers
         }
 
         [HttpGet("list")]
-        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
+        [AllowAnonymous]
         public async Task<ActionResult<PaginatedResult<WorkerProfileDTO>>> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             var result = await _service.GetAllWorkersAsync(new PaginationRequest { Page = page, PageSize = pageSize });

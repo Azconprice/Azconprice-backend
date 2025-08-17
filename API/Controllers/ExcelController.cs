@@ -37,6 +37,14 @@ namespace API.Controllers
             return Ok(count);
         }
 
+        [HttpGet("example-file")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetProductsExcelExampleForCompaniesAsync()
+        {
+            var fileContent = await _excelFileService.GetProductsExcelExampleForCompaniesAsync();
+            return fileContent;
+        }
+
         [HttpPost("upload")]
         [AllowAnonymous]
         public IActionResult UploadExcel(ExcelUploadRequest request)

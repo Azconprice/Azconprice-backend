@@ -6,10 +6,11 @@ namespace Application.Models.DTOs.WorkerFunction
 {
     public class WorkerFunctionShowDTO
     {
+        public Guid Id { get; set; }
         public ProfessionShowDTO Profession { get; set; }
-        public MeasurementUnit MeasurementUnit { get; set; }
+        public MeasurementUnitShowDTO MeasurementUnit { get; set; }
         public Guid WorkerProfileId { get; set; }
-        public decimal Price { get; set; }
+        public double Price { get; set; }
         public IEnumerable<SpecializationShowDTO> Specializations { get; set; }
     }
 }

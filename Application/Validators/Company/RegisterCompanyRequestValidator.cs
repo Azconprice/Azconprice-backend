@@ -8,6 +8,7 @@ namespace Application.Validators.Company
     {
         private const string AzerbaijanPhoneRegex = @"^\+994[-\s]?(10|50|51|55|60|70|77|99)[-\s]?\d{3}[-\s]?\d{2}[-\s]?\d{2}$";
         private readonly string[] _allowedExtensions = { ".jpg", ".jpeg", ".png", ".pdf" };
+        private readonly string[] _allowedExcelExtensions = { ".xls", ".xlsx" };
 
         public RegisterCompanyRequestValidator()
         {
@@ -38,6 +39,12 @@ namespace Application.Validators.Company
                .WithMessage("File is required.")
                .Must(HaveAllowedExtension)
                .WithMessage($"File must be one of the following types: {string.Join(", ", _allowedExtensions)}");
+
+            RuleFor(x => x.ProductsExcel)
+                .NotNull()
+                .WithMessage("File is required.")
+                .Must(HaveAllowedExtension)
+                .WithMessage($"File must be one of the following types: {string.Join(", ", _allowedExcelExtensions)}");
 
             RuleFor(x => x.Address)
                     .NotEmpty().WithMessage("Address is required.");

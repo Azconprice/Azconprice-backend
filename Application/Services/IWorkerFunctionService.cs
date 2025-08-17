@@ -6,11 +6,12 @@ namespace Application.Services
 {
     public interface IWorkerFunctionService
     {
-        Task<bool> AddWorkerFunctionAsync(CreateWorkerFunctionRequest request);
-        Task<WorkerFunction> UpdateWorkerFunctionAsync(Guid id, CreateWorkerFunctionRequest request);
-        Task<bool> DeleteWorkerFunctionAsync(Guid id);
+        Task<bool> AddWorkerFunctionAsync(string userId, CreateWorkerFunctionRequest request);
+        Task<WorkerFunction> UpdateWorkerFunctionAsync(string userId, string id, CreateWorkerFunctionRequest request);
+        Task<bool> DeleteWorkerFunctionAsync(string userId, string id);
         Task<PaginatedResult<WorkerFunctionShowDTO>> GetAllWorkerFunctionsAsync(PaginationRequest request);
-        Task<IEnumerable<WorkerFunctionShowDTO>> GetWorkerFunctionsByWorkerProfileIdAsync(Guid workerProfileId);
-        Task<WorkerFunctionShowDTO?> GetWorkerFunctionByIdAsync(Guid id);
+        Task<IEnumerable<WorkerFunctionShowDTO>> GetWorkerFunctionsByWorkerProfileIdAsync(string workerProfileId);
+        Task<WorkerFunctionShowDTO?> GetWorkerFunctionByIdAsync(string id);
+        Task<WorkerFunctionShowDTO> AddSpecialization(string userId, string workerFunctionId, string specializationId);
     }
 }

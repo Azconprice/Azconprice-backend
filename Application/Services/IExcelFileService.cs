@@ -11,6 +11,7 @@ namespace Application.Services
         Task<int> GetExcelFileCountAsync();
         Task<ExcelFileDTO> UploadExcelAsync(IFormFile file, string firstName, string lastName, string email, string userId);
         Task<PaginatedResult<ExcelFileDTO>> GetExcelFilesByUserAsync(string userId, PaginationRequest request);
-        public FileContentResult ProcessQueryExcelAsync(IFormFile queryFile, string? userId = null,bool isSimple = false);
+        FileContentResult ProcessQueryExcelAsync(IFormFile queryFile, string? userId = null,bool isSimple = false);
+        Task<FileContentResult> GetProductsExcelExampleForCompaniesAsync();
     }
 }

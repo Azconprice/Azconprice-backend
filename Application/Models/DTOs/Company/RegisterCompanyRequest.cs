@@ -13,5 +13,6 @@ namespace Application.Models.DTOs.Company
         public string Address { get; set; }
         public string SalesCategoryId { get; set; }
         public IFormFile? Logo { get; set; }
+        public IFormFile ProductsExcel { get; set; }
     }
 }

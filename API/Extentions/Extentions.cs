@@ -213,6 +213,7 @@ namespace API.Extentions
             services.AddScoped<IExcelFileService, ExcelFileService>();
             services.AddScoped<IMeasurementUnitService, MeasurementUnitService>();
             services.AddScoped<IWorkerFunctionSpecializationService, WorkerFunctionSpecializationService>();
+            services.AddScoped<IWorkerFunctionService, WorkerFunctionService>();
             return services;
         }
 
