@@ -11,5 +11,6 @@ namespace Application.Services
         Task<SpecializationShowDTO?> GetSpecializationByIdAsync(string id);
         Task<IEnumerable<SpecializationShowDTO>> SearchSpecializationAsync(string query);
         Task<IEnumerable<SpecializationShowDTO>> SearchSpecializationByProfessionAsync(string query, string professionId);
+        Task<IEnumerable<SpecializationShowDTO>> FilterByProfessionAsync(string professionId);
     }
 }

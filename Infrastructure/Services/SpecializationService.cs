@@ -47,6 +47,21 @@ namespace Infrastructure.Services
             return true;
         }
 
+        public async Task<IEnumerable<SpecializationShowDTO>> FilterByProfessionAsync(string professionId)
+        {
+            var specializations = await _specializationRepository
+                .Query()
+                .AsNoTracking()
+                .Where(s => s.ProfessionId.ToString() == professionId)
+                .Select(s => new SpecializationShowDTO
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                }).ToListAsync();
+
+            return specializations;
+        }
+
         public async Task<IEnumerable<SpecializationShowDTO>> GetAllSpecializationsAsync()
         {
             var specializations = await _specializationRepository.GetAllAsync(false);

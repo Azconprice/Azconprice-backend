@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Application.Models.DTOs.Specialization;
+﻿using Application.Models.DTOs.Specialization;
 using Application.Services;
+using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers
 {
@@ -23,7 +24,7 @@ namespace API.Controllers
 
                 await _appLogger.LogAsync(
                     action: "Specialization Added",
-                    relatedEntityId: null, 
+                    relatedEntityId: null,
                     userId: $"{User?.FindFirst("userId")}",
                     userName: $"{User?.FindFirst("firstname")} {User?.FindFirst("lastname")}",
                     details: $"Specialization '{specializationDto.Name}' added to ProfessionId '{specializationDto.ProfessionId}'."
@@ -58,6 +59,26 @@ namespace API.Controllers
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpGet("filter-by-profession")]
+        public async Task<ActionResult<IEnumerable<SpecializationShowDTO>>> FilterByProfession([FromQuery] string professionId)
+        {
+            try
+            {
+                var result = await _specializationService.FilterByProfessionAsync(professionId);
+                if (!result.Any())
+                    return NotFound("No specializations found for the specified profession.");
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "An error occurred while filtering specializations.", ex.Message });
             }
         }
 
@@ -115,11 +136,11 @@ namespace API.Controllers
         }
         [HttpGet("search-by-profession")]
         [AllowAnonymous]
-        public async Task<ActionResult<IEnumerable<SpecializationShowDTO>>> Search([FromQuery] string query,string professionId)
+        public async Task<ActionResult<IEnumerable<SpecializationShowDTO>>> Search([FromQuery] string query, string professionId)
         {
             try
             {
-                var result = await _specializationService.SearchSpecializationByProfessionAsync(query,professionId);
+                var result = await _specializationService.SearchSpecializationByProfessionAsync(query, professionId);
                 if (!result.Any())
                     return NotFound("No specializations found matching the query.");
                 return Ok(result);
@@ -130,7 +151,7 @@ namespace API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "An error occurred while searching for specializations.",ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Error = "An error occurred while searching for specializations.", ex.Message });
             }
         }
 
