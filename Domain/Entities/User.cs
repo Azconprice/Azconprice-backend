@@ -11,6 +11,7 @@ namespace Domain.Entities
         public string? Address { get; set; }
         public DateTime CreatedTime { get; set; } = DateTime.UtcNow;
         public virtual IEnumerable<ExcelFileRecord> ExcelFileRecords { get; set; }
-        public virtual IEnumerable<Transactiion> Transactions { get; set; }
+        public virtual IEnumerable<Transaction> Transactions { get; set; }
+        public virtual IEnumerable<ExcelUsagePackage> ExcelUsagePackages { get; set; }
     }
 }

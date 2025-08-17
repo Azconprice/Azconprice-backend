@@ -69,9 +69,10 @@ namespace Persistence.Contexts
         public DbSet<ExcelFileRecord> ExcelFileRecords { get; set; }
         public DbSet<OtpVerification> OtpVerifications { get; set; }
         public DbSet<Product> Products { get; set; }
-        public DbSet<Transactiion> Transactiions { get; set; }
+        public DbSet<Transaction> Transactiions { get; set; }
         public DbSet<MeasurementUnit> MeasurementUnits { get; set; }
         public DbSet<WorkerFunction> WorkerFunctions { get; set; }
         public DbSet<WorkerFunctionSpecialization> WorkerFunctionSpecializations { get; set; }
+        public DbSet<ExcelUsagePackage> ExcelUsagePackages { get; set; }
     }
 }

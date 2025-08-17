@@ -197,7 +197,14 @@ namespace API.Extentions
                 Password = Environment.GetEnvironmentVariable("SMTP__Password")!,
                 EnableSsl = bool.Parse(Environment.GetEnvironmentVariable("SMTP__EnableSsl") ?? "true")
             };
+            var paymentProviderOptions = new PaymentProviderOptions
+            {
+                BaseUrl = Environment.GetEnvironmentVariable("Payment__Provider__URL")!,
+                Username = Environment.GetEnvironmentVariable("Payment__Provider__Username")!,
+                Password = Environment.GetEnvironmentVariable("Payment__Provider__Password")!
+            };
             services.AddSingleton(smtpConfig);
+            services.AddSingleton(paymentProviderOptions);
 
             services.AddScoped<IAdminService, AdminService>();
             services.AddScoped<IWorkerService, WorkerService>();
