@@ -21,7 +21,7 @@ namespace Infrastructure.Services
         IWorkerService workerService,
         IMapper mapper) : IWorkerFunctionService
     {
-        public async Task<WorkerFunctionShowDTO> AddSpecialization(string userId,string workerFunctionId, string specizalitionId)
+        public async Task<WorkerFunctionShowDTO> AddSpecialization(string userId, string workerFunctionId, string specizalitionId)
         {
             var workerProfile = await workerProfileRepository.GetByUserIdAsync(userId) ?? throw new InvalidOperationException("Worker Profile not found");
             var workerFunction = await workerFunctionRepository.GetAsync(workerFunctionId) ?? throw new InvalidOperationException("Worker Function not found");
@@ -129,7 +129,7 @@ namespace Infrastructure.Services
             return list;
         }
 
-        public async Task<WorkerFunction> UpdateWorkerFunctionAsync(string userId, string id, CreateWorkerFunctionRequest request)
+        public async Task<WorkerFunctionShowDTO> UpdateWorkerFunctionAsync(string userId, string id, CreateWorkerFunctionRequest request)
         {
             var workerProfile = await workerProfileRepository.GetByUserIdAsync(userId) ?? throw new InvalidOperationException("Worker Profile not found");
             var workerFunction = await workerFunctionRepository.GetAsync(id) ?? throw new InvalidOperationException("Worker Function not found");
@@ -147,24 +147,18 @@ namespace Infrastructure.Services
                 throw new InvalidOperationException("One or more Specializations are invalid or do not exist.");
             }
 
-            var specializations = specializationRepository.GetWhere(s => request.SpecializationIds.Contains(s.Id.ToString()));
+            var specializations = await specializationRepository.Query().Where(s => request.SpecializationIds.Contains(s.Id.ToString())).ToListAsync();
             var workerFunctionSpecializations = workerFunction.WorkerFunctionSpecializations.ToList();
-            var workerFunctionSpecializationsToRemove = workerFunctionSpecializations
-                .Where(wfs => wfs.Specialization.ProfessionId != profession.Id)
-                .ToList();
 
-            foreach (var wfs in workerFunctionSpecializationsToRemove)
+            foreach (var wfs in workerFunctionSpecializations)
             {
                 await workerFunctionSpecializationService.DeleteWorkerFunctionSpecializationAsync(wfs.Id);
             }
 
-            foreach (var specialization in specializations)
-            {
-                if (!workerFunctionSpecializations.Any(wfs => wfs.SpecializationId == specialization.Id))
-                {
-                    await workerFunctionSpecializationService.AddWorkerFunctionSpecializationAsync(workerFunction.Id, specialization.Id);
-                }
-            }
+            await workerFunctionRepository.SaveChangesAsync();
+
+
+            await workerFunctionSpecializationService.AddRangeOfSpecializationsToWorkerFunctionAsync(workerFunction.Id, request.SpecializationIds);
 
             workerFunction.MeasurementUnitId = measurementUnit.Id;
             workerFunction.ProfessionId = profession.Id;
@@ -172,7 +166,16 @@ namespace Infrastructure.Services
             workerFunctionRepository.Update(workerFunction);
             await workerFunctionRepository.SaveChangesAsync();
 
-            return workerFunction;
+            // Return DTO instead of entity to avoid circular references
+            return new WorkerFunctionShowDTO
+            {
+                Id = workerFunction.Id,
+                WorkerProfileId = workerFunction.WorkerProfileId,
+                MeasurementUnit = mapper.Map<MeasurementUnitShowDTO>(workerFunction.MeasurementUnit),
+                Profession = mapper.Map<ProfessionShowDTO>(workerFunction.Profession),
+                Price = workerFunction.Price,
+                Specializations = workerFunction.WorkerFunctionSpecializations.Select(wfs => mapper.Map<SpecializationShowDTO>(wfs.Specialization)),
+            };
         }
     }
 }

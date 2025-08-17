@@ -55,7 +55,7 @@ namespace Infrastructure.Services
 
         public async Task<bool> DeleteWorkerFunctionSpecializationAsync(Guid id)
         {
-            _ = await workerFunctionRepository.GetAsync(id.ToString()) ?? throw new ArgumentException($"Worker function with ID {id} does not exist.");
+            _ = await workerFunctionSpecializationRepository.GetAsync(id.ToString()) ?? throw new ArgumentException($"Worker function with ID {id} does not exist.");
 
             await workerFunctionSpecializationRepository.RemoveAsync(id.ToString());
             await workerFunctionSpecializationRepository.SaveChangesAsync();
