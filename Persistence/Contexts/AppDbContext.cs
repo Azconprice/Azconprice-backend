@@ -55,7 +55,10 @@ namespace Persistence.Contexts
                 .HasIndex(mu => mu.Unit)
                 .IsUnique();
 
-
+            modelBuilder.Entity<Transaction>()
+                .HasOne(t => t.ExcelUsagePackage)
+                .WithOne(eup => eup.Transaction)
+                .HasForeignKey<Transaction>(x => x.Id);
         }
 
         public DbSet<SalesCategory> SalesCategory { get; set; }
@@ -69,7 +72,7 @@ namespace Persistence.Contexts
         public DbSet<ExcelFileRecord> ExcelFileRecords { get; set; }
         public DbSet<OtpVerification> OtpVerifications { get; set; }
         public DbSet<Product> Products { get; set; }
-        public DbSet<Transaction> Transactiions { get; set; }
+        public DbSet<Transaction> Transactions { get; set; }
         public DbSet<MeasurementUnit> MeasurementUnits { get; set; }
         public DbSet<WorkerFunction> WorkerFunctions { get; set; }
         public DbSet<WorkerFunctionSpecialization> WorkerFunctionSpecializations { get; set; }

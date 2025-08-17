@@ -16,8 +16,6 @@
         public string Status { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? PaidAt { get; set; }
-        public bool? IsReversed { get; set; }
-        public bool? IsInstallment { get; set; }
         public Guid ExcelUsagePackageId { get; set; }
         public virtual ExcelUsagePackage ExcelUsagePackage { get; set; }
     }

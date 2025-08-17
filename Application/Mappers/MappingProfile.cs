@@ -1,4 +1,5 @@
-﻿using Application.Models.DTOs;
+﻿using Application.Models;
+using Application.Models.DTOs;
 using Application.Models.DTOs.Company;
 using Application.Models.DTOs.Excel;
 using Application.Models.DTOs.Profession;
@@ -35,6 +36,7 @@ public class MappingProfile : Profile
         CreateMap<Profession, ProfessionShowDTO>();
         CreateMap<Specialization, SpecializationShowDTO>();
         CreateMap<MeasurementUnit, MeasurementUnitShowDTO>();
+        CreateMap<ExcelUsagePackage, ExcelUsagePackageShowDTO>();
 
         // For nested DTOs (if used in your DTOs)
         CreateMap<Profession, ProfessionInsideSpecializationDTO>();
