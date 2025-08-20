@@ -2,20 +2,27 @@
 using Application.Services;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Infrastructure.Services
 {
     public class PaymentService(PaymentProviderOptions options) : IPaymentService
     {
-        public sealed class OrderDto
+        private sealed class CreateOrderResponse
+        {
+            [JsonPropertyName("order")]
+            public OrderDto Order { get; set; } = default!;
+        }
+
+        private sealed class OrderDto
         {
             [JsonPropertyName("id")] public long Id { get; set; }
             [JsonPropertyName("hppUrl")] public string HppUrl { get; set; } = "";
-            [JsonPropertyName("password")] public string Password { get; set; } = ""; // sensitive
+            [JsonPropertyName("password")] public string Password { get; set; } = "";
             [JsonPropertyName("status")] public string Status { get; set; } = "";
             [JsonPropertyName("cvv2AuthStatus")] public string Cvv2AuthStatus { get; set; } = "";
-            [JsonPropertyName("secret")] public string Secret { get; set; } = "";   // sensitive
+            [JsonPropertyName("secret")] public string Secret { get; set; } = "";
         }
 
         public async Task<string> CreatePaymentOrder()
@@ -25,7 +32,7 @@ namespace Infrastructure.Services
 
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", base64Credentials);
-            client.BaseAddress = new Uri($"{options.BaseUrl}/order/");
+            client.BaseAddress = new Uri(options.BaseUrl);
 
             var body = new
             {
@@ -36,21 +43,23 @@ namespace Infrastructure.Services
                     currency = "AZN",
                     language = "az",
                     description = "Testdesc",
-                    hppRedirectUrl = "http://azconprice.az",
+                    hppRedirectUrl = $"{ options.CallbackUrl}/Payment/callback",
                     hppCofCapturePurposes = new[] { "Cit" }
                 }
             };
 
-
-            var response = await client.PostAsJsonAsync("create", body);
+            var response = await client.PostAsJsonAsync("/api/order/", body);
 
             if (!response.IsSuccessStatusCode)
             {
                 throw new InvalidOperationException($"Failed to create payment order: {response.ReasonPhrase}");
             }
-            var orderDto = await response.Content.ReadFromJsonAsync<OrderDto>();
+            var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-            return $"{orderDto?.HppUrl}?id={orderDto?.Id}&password={orderDto?.Password}" ?? throw new InvalidOperationException("Failed to retrieve payment URL from response.");
+            var payload = await response.Content.ReadFromJsonAsync<CreateOrderResponse>(jsonOptions) ?? throw new InvalidOperationException($"Failed to create payment order. try again");
+
+            return $"{payload.Order.HppUrl}?id={payload.Order?.Id}&password={payload.Order?.Password}" ?? throw new InvalidOperationException("Failed to retrieve payment URL from response.");
+            
         }
 
         public Task<string> CreatePaymentTransaction(string orderId, string status)

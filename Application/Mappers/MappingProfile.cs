@@ -24,7 +24,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Type, opt => opt.MapFrom(src => RequestTypeExtensions.Parse(src.Type)));
 
         CreateMap<Request, RequestShowDTO>()
-            .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Type.ToString()));
+            .ForMember(dest => dest.Type, opt => opt.MapFrom(src => MapRequestType(src.Type)));
 
         CreateMap<SalesCategory, SalesCategoryShowDTO>();
 
@@ -45,4 +45,13 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
             .ForMember(dest => dest.Url, opt => opt.Ignore());
     }
+
+    private string MapRequestType(RequestType type) => type switch
+    {
+        RequestType.PlanInqury => "Plan Inquiry",
+        RequestType.Support => "Support",
+        RequestType.Registration => "Registration",
+        RequestType.ComplaintAndSuggestion => "Complaint and Suggestion",
+        _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+    };
 }

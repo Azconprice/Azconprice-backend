@@ -201,7 +201,8 @@ namespace API.Extentions
             {
                 BaseUrl = Environment.GetEnvironmentVariable("Payment__Provider__URL")!,
                 Username = Environment.GetEnvironmentVariable("Payment__Provider__Username")!,
-                Password = Environment.GetEnvironmentVariable("Payment__Provider__Password")!
+                Password = Environment.GetEnvironmentVariable("Payment__Provider__Password")!,
+                CallbackUrl = Environment.GetEnvironmentVariable("Payment__Provider__Callback__URL")!
             };
             services.AddSingleton(smtpConfig);
             services.AddSingleton(paymentProviderOptions);
@@ -221,6 +222,7 @@ namespace API.Extentions
             services.AddScoped<IMeasurementUnitService, MeasurementUnitService>();
             services.AddScoped<IWorkerFunctionSpecializationService, WorkerFunctionSpecializationService>();
             services.AddScoped<IWorkerFunctionService, WorkerFunctionService>();
+            services.AddScoped<IPaymentService, PaymentService>();
             return services;
         }
 
