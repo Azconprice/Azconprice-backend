@@ -24,7 +24,9 @@ RUN dotnet tool install --global dotnet-ef --version 8.0.0
 # Qovluqlar dəyişdirilir və migrationlar tətbiq edilir
 # İstifadəçi istəyinə uyğun olaraq əlavə edilib, lakin tövsiyə edilmir.
 WORKDIR /src/API
-RUN dotnet ef database update --project ../Persistence --startup-project ./
+
+# Dotnet alətini birbaşa çağırırıq
+RUN ~/.dotnet/tools/dotnet-ef database update --project ../Persistence --startup-project ./
 
 # Layihə nəşr edilir (publish)
 WORKDIR /src
