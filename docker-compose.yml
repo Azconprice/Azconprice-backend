@@ -7,7 +7,6 @@ services:
     ports:
       - "7135:7135"
     environment:
-      # Provide the full connection string here
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: "Host=ep-rough-dew-a2fcsmvv-pooler.eu-central-1.aws.neon.tech;Database=azconpriceprod;Username=neondb_owner;Password=npg_Q5FWuvGZPXq8;SSL Mode=Require;Trust Server Certificate=true"
     volumes:
