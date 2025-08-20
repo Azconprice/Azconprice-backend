@@ -3,9 +3,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Proyekt faylları (csproj və s.) əlavə edilir
-# Bu, `dotnet restore` əmrinin daha sürətli işləməsini təmin edir, çünki dəyişməyən layihə faylları keşdə saxlanılır
-COPY *.sln .
+# Layihə faylları kopyalanır (daha sürətli bərpa üçün)
+COPY ./*.sln ./
 COPY API/*.csproj ./API/
 COPY Application/*.csproj ./Application/
 COPY Domain/*.csproj ./Domain/
@@ -18,7 +17,17 @@ RUN dotnet restore
 # Bütün layihə kodları kopyalanır
 COPY . .
 
-# Proyekt nəşr edilir (publish)
+# Entity Framework alətləri quraşdırılır (migrationlar üçün lazımdır)
+# BU ADDIM MİGRATİONLARI QAÇIRMAK ÜÇÜN ÇOX ÖNƏMLİDİR!
+RUN dotnet tool install --global dotnet-ef --version 8.0.0
+
+# Qovluqlar dəyişdirilir və migrationlar tətbiq edilir
+# İstifadəçi istəyinə uyğun olaraq əlavə edilib, lakin tövsiyə edilmir.
+WORKDIR /src/API
+RUN dotnet ef database update --project ../Persistence --startup-project ./
+
+# Layihə nəşr edilir (publish)
+WORKDIR /src
 RUN dotnet publish -c Release -o /app/publish
 
 # -------- RUNTIME STAGE --------
@@ -26,19 +35,9 @@ RUN dotnet publish -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 
-# Əlavə paketlər quraşdırılır (məsələn, migrationlar üçün lazımdır)
-# Bu sətir xətaların qarşısını alır
-RUN apt-get update && apt-get install -y libgdiplus
-
 # Nəşr olunmuş proyekt faylları kopyalanır
+# Bu sətir sadəcə lazımi faylları köçürür
 COPY --from=build /app/publish .
 
-# Tətbiqə verilənlər bazası migrationları tətbiq etmək üçün xüsusi entrypoint scripti yaradılır
-# Bu script tətbiq işə düşməzdən əvvəl migrationları tətbiq edir
-COPY --from=build /src/Persistence/ ./Persistence/
-COPY --from=build /src/API/ ./API/
-COPY --from=build /src/Domain/ ./Domain/
-COPY --from=build /src/Application/ ./Application/
-
 # Tətbiqin işə düşmə nöqtəsi
-ENTRYPOINT ["dotnet", "API.dll", "migrate"]
+ENTRYPOINT ["dotnet", "API.dll"]
