@@ -31,11 +31,36 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker pull agilazizovf/azconprice
-            docker stop azconprice || true
-            docker rm azconprice || true
-            docker run -d \
-            --name azconprice \
-            -v /home/ubuntu/azconprice/files:/home/ubuntu/azconprice/files \
-            -p 7135:7135 \
-            agilazizovf/azconprice
+            # Create a directory for the project if it doesn't exist
+            mkdir -p ~/azconprice-backend
+            
+            # Navigate to the project directory
+            cd ~/azconprice-backend
+            
+            # Create a new docker-compose.yml file on the server
+            # This is the safest way to inject the configuration.
+            cat <<EOF > docker-compose.yml
+            version: "3.8"
+            
+            services:
+              azconprice-backend:
+                image: agilazizovf/azconprice
+                container_name: azconprice-backend
+                ports:
+                  - "7135:7135"
+                environment:
+                  ASPNETCORE_ENVIRONMENT: Production
+                  ConnectionStrings__DefaultConnection: "Host=ep-rough-dew-a2fcsmvv-pooler.eu-central-1.aws.neon.tech;Database=azconpriceprod;Username=neondb_owner;Password=npg_Q5FWuvGZPXq8;SSL Mode=Require;Trust Server Certificate=true"
+                volumes:
+                  - azconprice_files:/app/files
+                restart: always
+            
+            volumes:
+              azconprice_files:
+            EOF
+            
+            # Pull the latest Docker image to ensure it's up-to-date
+            docker-compose pull
+            
+            # Stop and remove old containers, then start a new one
+            docker-compose up -d --remove-orphans
