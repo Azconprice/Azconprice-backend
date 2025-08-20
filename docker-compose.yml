@@ -1,15 +1,13 @@
 version: "3.8"
 
-# service
 services:
   azconprice-backend:
     image: agilazizovf/azconprice
     container_name: azconprice-backend
     ports:
       - "7135:7135"
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "Host=ep-rough-dew-a2fcsmvv-pooler.eu-central-1.aws.neon.tech;Database=azconpriceprod;Username=neondb_owner;Password=npg_Q5FWuvGZPXq8;SSL Mode=Require;Trust Server Certificate=true"
+    env_file:
+      - ./.env  # Bu sətr Docker Compose-a .env faylını oxumasını deyir
     volumes:
       - azconprice_files:/app/files
     restart: always
