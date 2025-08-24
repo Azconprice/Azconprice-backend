@@ -39,16 +39,16 @@ namespace Infrastructure.Services
                 order = new
                 {
                     typeRid = "Order_SMS",
-                    amount = "1.0",
+                    amount = "0.01",
                     currency = "AZN",
                     language = "az",
                     description = "Testdesc",
-                    hppRedirectUrl = $"{ options.CallbackUrl}/Payment/callback",
+                    hppRedirectUrl = $"{options.CallbackUrl}/Payment/callback",
                     hppCofCapturePurposes = new[] { "Cit" }
                 }
             };
 
-            var response = await client.PostAsJsonAsync("/api/order/", body);
+            var response = await client.PostAsJsonAsync("/api/order", body);
 
             if (!response.IsSuccessStatusCode)
             {

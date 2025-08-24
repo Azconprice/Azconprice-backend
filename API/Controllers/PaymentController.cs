@@ -10,7 +10,7 @@ namespace API.Controllers
     public class PaymentController(IPaymentService paymentService) : ControllerBase
     {
         [HttpPost("order")]
-        //[Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin,User,Worker,Company")]
+        [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin,User,Worker,Company")]
         public async Task<IActionResult> CreatePaymentOrder()
         {
             try
